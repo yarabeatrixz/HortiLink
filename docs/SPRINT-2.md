@@ -31,8 +31,23 @@ Itens do relatório de inconsistências (`HortiLink_Relatorio_Inconsistencias.pd
    update public.users set role = 'admin' where email = 'EMAIL_DO_ADMIN';
    ```
    Depois ela entra escolhendo o perfil **Administrador**.
-3. **API no Render** (opcional): variável `CODIGO_RETIRADA_SEGREDO` com um texto longo aleatório. Sem ela a API usa a chave secreta do Supabase.
-4. Fazer o merge do PR e clicar em **Manual Deploy** nos dois serviços do Render (API e site).
-5. Testar no link publicado (DoD): login das 4 contas, comprador vendo os produtores (COMP-01), busca de pontos (PROD-05) e o fluxo de retirada.
+3. Merge do PR e **Manual Deploy só da API** no Render. O **site** do Render NÃO é atualizado: ele fica como a versão da Sprint 1, para o professor comparar.
+   - (Opcional) variável `CODIGO_RETIRADA_SEGREDO` na API, com um texto longo aleatório. Sem ela a API usa a chave secreta do Supabase.
+4. **Site da Sprint 2 na Vercel** (um link por versão, pedido do professor): *Add New → Project → importar `yarabeatrixz/HortiLink`*.
+   - **Root Directory:** `frontend` (o resto vem de `frontend/vercel.json`).
+   - **Production Branch:** `Yara_beatrix` (Settings → Git, se a Vercel não pegar sozinha).
+   - **Environment Variables:** `VITE_API_URL`, `VITE_SUPABASE_URL` (termina em `.supabase.co`) e `VITE_SUPABASE_ANON_KEY` — os mesmos valores do site no Render, copiados e colados.
+   - Nome sugerido do projeto: `hortilink-sprint2` → link `https://hortilink-sprint2.vercel.app`.
+5. **Liberar o link novo na API**: no Render, API → Environment → `FRONTEND_ORIGIN` com as duas versões separadas por vírgula, por exemplo `https://hortilink-site.onrender.com,https://hortilink-sprint2.vercel.app` (sem barra no final). Salvar faz a API reiniciar.
+6. Testar no link da Vercel (DoD): login das 4 contas, comprador vendo os produtores (COMP-01), busca de pontos (PROD-05) e o fluxo de retirada.
+
+### Versões publicadas
+
+| Versão | Site | API e banco |
+|---|---|---|
+| Sprint 1 | https://hortilink-site.onrender.com | https://hortilink.onrender.com · Supabase da Yara (compartilhados) |
+| Sprint 2 | link da Vercel do passo 4 | os mesmos |
+
+A versão da Sprint 1 continua funcionando com a API e o banco novos, mas regras novas também valem nela (ex.: loja pendente não aparece para escolha).
 
 > ⚠️ Rode o passo 1 **antes** do deploy. Sem a migration o site abre (lojas antigas contam como aprovadas), mas a API grava colunas novas em `stores` e `orders`: comprar, pagar, salvar loja e retirar dão erro até a migration rodar.
