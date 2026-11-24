@@ -7,9 +7,10 @@ import { calcularIndicadores } from "./indicadores";
 import { falhaDe, porId, sucesso } from "./testes";
 
 describe("status do estoque (alerta de reposição)", () => {
-  it("ok acima do mínimo, baixo no mínimo ou abaixo, zerado sem quantidade", () => {
+  it("ok no mínimo ou acima, baixo abaixo do mínimo, zerado sem quantidade", () => {
     expect(statusEstoque({ quantity: 31, minQuantity: 30 })).toBe(STATUS_ESTOQUE.OK);
-    expect(statusEstoque({ quantity: 30, minQuantity: 30 })).toBe(STATUS_ESTOQUE.BAIXO);
+    expect(statusEstoque({ quantity: 30, minQuantity: 30 })).toBe(STATUS_ESTOQUE.OK);
+    expect(statusEstoque({ quantity: 29, minQuantity: 30 })).toBe(STATUS_ESTOQUE.BAIXO);
     expect(statusEstoque({ quantity: 0, minQuantity: 30 })).toBe(STATUS_ESTOQUE.ZERADO);
   });
 
