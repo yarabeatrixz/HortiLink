@@ -57,7 +57,15 @@ Todas exigem `Authorization: Bearer <token do Supabase>`, menos `/saude`.
 | `POST` | `/orders` | comprador | comprar (devolve o pedido com número) |
 | `POST` | `/orders/:id/pay` | comprador (dono) | pagamento **simulado** |
 | `POST` | `/orders/:id/delivered` | produtor (dono) | entregue na loja |
-| `PUT` | `/stores/me` | loja | ponto de coleta |
+| `PUT` | `/stores/me` | loja | ponto de coleta (com foto e capacidade) |
+| `POST` | `/products/delete` | produtor (dono) | excluir vários produtos (`{ ids }`) |
+| `GET` | `/orders/:id/pickup-code` | comprador (dono) | código de retirada (só com o produto na loja) |
+| `POST` | `/orders/:id/received` | loja do pedido | libera para retirada |
+| `POST` | `/orders/:id/picked-up` | loja do pedido | confere o código (`{ code }`) → Retirado |
+| `PUT` | `/users/me` | todos | nome e cidade |
+| `POST` | `/admin/stores/:id/review` | admin | aprovar / reprovar / suspender (`{ status, note }`) |
+| `PUT` | `/admin/reward-settings` | admin | regra da recompensa (`{ fixedAmount, percent }`) |
+| `POST` | `/admin/reward-payouts` | admin | fecha o mês de uma loja (`{ storeId, month }`) |
 
 Respostas de erro: `{ "error": "mensagem pronta para o usuário" }` com **400** (corpo inválido), **401** (sem login), **403** (perfil ou dono errado), **404** (não existe) ou **422** (regra de negócio).
 
