@@ -46,7 +46,9 @@ export function salvarLoja(estado: Estado, userId: string, dados: DadosLoja): Re
     photo: foto,
     dryBoxes,
     coldBoxes,
-    status: existente?.status ?? STATUS_LOJA.PENDENTE,
+    // Reprovada que corrige os dados volta para análise; as outras mantêm a situação.
+    status:
+      existente?.status === STATUS_LOJA.REPROVADA ? STATUS_LOJA.PENDENTE : (existente?.status ?? STATUS_LOJA.PENDENTE),
   };
   return {
     ok: true,

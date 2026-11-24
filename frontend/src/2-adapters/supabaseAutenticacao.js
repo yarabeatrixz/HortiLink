@@ -48,6 +48,11 @@ export function criarSupabaseAutenticacao(cliente) {
       return data.user.id;
     },
 
+    async trocarSenha(senha) {
+      const { error } = await cliente.auth.updateUser({ password: senha });
+      if (error) throw new Error("Não foi possível trocar a senha agora. Entre de novo e tente outra vez.");
+    },
+
     async sair() {
       await cliente.auth.signOut();
     },

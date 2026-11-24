@@ -2,7 +2,8 @@
 // telas não mudam. Escreve pela API (que confere login, perfil, dono e regras) e
 // relê o estado do banco depois de cada escrita.
 
-import { validarCadastro } from "@hortilink/dominio";
+import { RECOMPENSA_PADRAO } from "@hortilink/banco";
+import { validarCadastro, validarNovaSenha } from "@hortilink/dominio";
 
 const PROPOSTAS_INDISPONIVEIS = "Propostas ainda não estão disponíveis.";
 
@@ -16,6 +17,8 @@ const estadoVazio = () => ({
   proposals: [],
   stockMovements: [],
   expenses: [],
+  rewardSettings: { ...RECOMPENSA_PADRAO },
+  rewardPayouts: [],
   nextOrderNumber: 1,
 });
 
@@ -61,6 +64,7 @@ export function criarCasosDeUsoRemotos({ leitura, autenticacao, escrita }) {
 
     salvarProduto: (dados) => escrever(() => escrita.salvarProduto(dados)),
     excluirProduto: (id) => escrever(() => escrita.excluirProduto(id)),
+    excluirProdutos: (ids) => escrever(() => escrita.excluirProdutos(ids)),
     criarOferta: (dados) => escrever(() => escrita.criarOferta(dados)),
     encerrarOferta: (id) => escrever(() => escrita.encerrarOferta(id)),
     // O dono é sempre quem está logado (a API usa o token), então o userId não vai na rota.
@@ -76,6 +80,22 @@ export function criarCasosDeUsoRemotos({ leitura, autenticacao, escrita }) {
     recusarProposta: propostaIndisponivel,
 
     salvarLoja: (_userId, dados) => escrever(() => escrita.salvarLoja(dados)),
+    confirmarRecebimento: (id) => escrever(() => escrita.confirmarRecebimento(id)),
+    confirmarRetirada: (id, codigo) => escrever(() => escrita.confirmarRetirada(id, codigo)),
+    codigoDeRetirada: (id) => escrita.codigoDeRetirada(id),
+
+    atualizarPerfil: (_userId, dados) => escrever(() => escrita.atualizarPerfil(dados)),
+    async trocarSenha(_userId, senha, confirmacao) {
+      const problema = validarNovaSenha(senha, confirmacao);
+      if (problema) throw new Error(problema);
+      await autenticacao.trocarSenha(senha);
+      return { ok: true, state: await leitura.carregar() };
+    },
+
+    avaliarLoja: (lojaId, decisao) => escrever(() => escrita.avaliarLoja(lojaId, decisao)),
+    salvarConfigRecompensa: (dados) => escrever(() => escrita.salvarConfigRecompensa(dados)),
+    fecharMesRecompensa: (storeId, month) =>
+      escrever(() => escrita.fecharMesRecompensa(storeId, month)),
 
     registrarEntrada: (dados) => escrever(() => escrita.registrarEntrada(dados)),
     registrarPerda: (dados) => escrever(() => escrita.registrarPerda(dados)),

@@ -7,12 +7,12 @@ import { useState } from "react";
 import { inicial, nomePerfil } from "@hortilink/dominio";
 import { Logo } from "../components/Logo";
 import { useApp } from "../state/AppProvider";
-import { NAV } from "./navigation";
+import { ABA_PERFIL, NAV } from "./navigation";
 import { RouteScreen, TabScreen } from "./routes";
 
 export function Shell() {
-  const { currentUser, logout } = useApp();
-  const abas = NAV[currentUser.role];
+  const { currentUser, logout, saving } = useApp();
+  const abas = [...NAV[currentUser.role], ABA_PERFIL];
   const [tab, setTab] = useState(abas[0].id);
   const [route, setRoute] = useState(null);
 
@@ -73,6 +73,11 @@ export function Shell() {
             </button>
           </div>
         </header>
+        {saving && (
+          <div className="saving-bar" role="status">
+            Salvando…
+          </div>
+        )}
         <main className="content">
           {route ? (
             <RouteScreen route={route} setRoute={setRoute} abrirAba={abrirAba} />

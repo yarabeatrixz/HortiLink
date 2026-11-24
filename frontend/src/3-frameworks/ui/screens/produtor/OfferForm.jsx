@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { brl, km } from "@hortilink/dominio";
+import { brl, km, lojasAprovadas } from "@hortilink/dominio";
 import { Button } from "../../components/base/Button";
 import { ErrorMessage } from "../../components/base/ErrorMessage";
 import { Field } from "../../components/base/Field";
@@ -21,7 +21,7 @@ export function OfferForm({ id, back }) {
     storeIds: [],
   });
   const [error, setError] = useState("");
-  const finder = useNearbyStores(stores);
+  const finder = useNearbyStores(lojasAprovadas({ stores }));
   const product = catalog.find((item) => item.id === form.productId);
   const set = (key) => (event) => setForm({ ...form, [key]: event.target.value });
   const toggleStore = (storeId) =>

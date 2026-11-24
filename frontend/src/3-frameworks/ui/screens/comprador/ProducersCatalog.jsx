@@ -18,8 +18,15 @@ export function ProducersCatalog({ open }) {
       product.name.toLowerCase().includes(termo) &&
       (category === "Todas" || product.category === category),
   );
-  const producers = users.filter(
-    (user) => user.role === "produtor" && filtered.some((p) => p.producerId === user.id),
+  // COMP-01: o produtor aparece pelo catálogo dele, mesmo que o perfil não tenha
+  // vindo do banco (aí mostra "Produtor parceiro" em vez de sumir com os produtos).
+  const producers = [...new Set(filtered.map((product) => product.producerId))].map(
+    (producerId) =>
+      users.find((user) => user.id === producerId) ?? {
+        id: producerId,
+        name: "Produtor parceiro",
+        city: "Alto Tietê",
+      },
   );
 
   return (

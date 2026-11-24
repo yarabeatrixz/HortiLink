@@ -35,7 +35,7 @@ export function ConfirmModal({
           <Button variant="secondary" onClick={onClose} autoFocus>
             Cancelar
           </Button>
-          <Button variant={danger ? "danger" : "primary"} onClick={onConfirm}>
+          <Button variant={danger ? "danger" : "primary"} onClick={onConfirm} locks>
             {confirmLabel}
           </Button>
         </div>
