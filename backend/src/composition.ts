@@ -13,7 +13,10 @@ import type { DependenciasServidor } from "./3-frameworks/http/servidor";
 
 export function montarDependencias(ambiente: Ambiente): DependenciasServidor {
   const { repositorio, verificador } = escolherAdapters(ambiente);
-  return { casos: criarCasosDeUso({ repositorio }), verificador };
+  return {
+    casos: criarCasosDeUso({ repositorio, segredoRetirada: ambiente.segredoRetirada }),
+    verificador,
+  };
 }
 
 function escolherAdapters(ambiente: Ambiente): {

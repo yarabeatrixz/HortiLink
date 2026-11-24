@@ -67,8 +67,37 @@ export const esquemaPagamento = objeto(
 );
 
 export const esquemaLoja = objeto(
-  { name: textoOpcional, address: { type: "string", maxLength: 200 }, city: textoOpcional, hours: textoOpcional },
+  {
+    name: textoOpcional,
+    address: { type: "string", maxLength: 200 },
+    city: textoOpcional,
+    hours: textoOpcional,
+    photo: foto,
+    dryBoxes: numero,
+    coldBoxes: numero,
+  },
   ["name", "address", "city", "hours"],
+);
+
+export const esquemaExcluirProdutos = objeto(
+  { ids: { type: "array", items: texto, minItems: 1, maxItems: 200 } },
+  ["ids"],
+);
+
+export const esquemaPerfil = objeto({ name: textoOpcional, city: textoOpcional }, ["name", "city"]);
+
+export const esquemaCodigoRetirada = objeto({ code: { type: "string", maxLength: 12 } }, ["code"]);
+
+export const esquemaAvaliarLoja = objeto(
+  { status: { type: "string", enum: ["Aprovada", "Reprovada", "Suspensa"] }, note: textoLongo },
+  ["status"],
+);
+
+export const esquemaConfigRecompensa = objeto({ fixedAmount: numero, percent: numero }, ["fixedAmount", "percent"]);
+
+export const esquemaFechamento = objeto(
+  { storeId: texto, month: { type: "string", pattern: "^\\d{4}-(0[1-9]|1[0-2])$" } },
+  ["storeId", "month"],
 );
 
 export const esquemaEntrada = objeto(

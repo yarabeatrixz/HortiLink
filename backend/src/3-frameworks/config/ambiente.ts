@@ -17,6 +17,8 @@ export interface Ambiente {
    */
   modo: "demo" | "supabase";
   supabase: ConfigSupabase | null;
+  /** Segredo do código de retirada; sem CODIGO_RETIRADA_SEGREDO usa a chave secreta do Supabase. */
+  segredoRetirada: string | undefined;
 }
 
 export function lerAmbiente(variaveis: Record<string, string | undefined> = process.env): Ambiente {
@@ -51,5 +53,6 @@ export function lerAmbiente(variaveis: Record<string, string | undefined> = proc
     origemFrontend: variaveis.FRONTEND_ORIGIN ?? "http://localhost:5173",
     modo: supabase ? "supabase" : "demo",
     supabase,
+    segredoRetirada: variaveis.CODIGO_RETIRADA_SEGREDO?.trim() || supabase?.chaveServiceRole,
   };
 }

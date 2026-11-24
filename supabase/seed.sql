@@ -5,18 +5,23 @@ insert into auth.users (instance_id, id, aud, role, email, encrypted_password, e
   ('00000000-0000-0000-0000-000000000000', md5('user-comprador')::uuid, 'authenticated', 'authenticated', 'comprador@hortilink.com', crypt('123456', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"role":"comprador","name":"Marina Costa","city":"Suzano"}', now(), now(), '', '', '', ''),
   ('00000000-0000-0000-0000-000000000000', md5('user-loja')::uuid, 'authenticated', 'authenticated', 'loja@hortilink.com', crypt('123456', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"role":"loja","name":"Ana Pereira","city":"Mogi das Cruzes"}', now(), now(), '', '', '', ''),
   ('00000000-0000-0000-0000-000000000000', md5('user-produtor-2')::uuid, 'authenticated', 'authenticated', 'carlos@hortilink.com', crypt('123456', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"role":"produtor","name":"Carlos Nunes","city":"Biritiba-Mirim"}', now(), now(), '', '', '', ''),
-  ('00000000-0000-0000-0000-000000000000', md5('loja-demo-2')::uuid, 'authenticated', 'authenticated', 'loja-demo-2@hortilink.com', crypt('123456', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"role":"loja","name":"Empório Vila Verde","city":"Suzano"}', now(), now(), '', '', '', '');
+  ('00000000-0000-0000-0000-000000000000', md5('user-admin')::uuid, 'authenticated', 'authenticated', 'admin@hortilink.com', crypt('123456', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"role":"comprador","name":"Equipe HortiLink","city":"Mogi das Cruzes"}', now(), now(), '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000000', md5('loja-demo-2')::uuid, 'authenticated', 'authenticated', 'loja-demo-2@hortilink.com', crypt('123456', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"role":"loja","name":"Empório Vila Verde","city":"Suzano"}', now(), now(), '', '', '', ''),
+  ('00000000-0000-0000-0000-000000000000', md5('loja-demo-3')::uuid, 'authenticated', 'authenticated', 'loja-demo-3@hortilink.com', crypt('123456', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"role":"loja","name":"Quitanda Recanto","city":"Biritiba-Mirim"}', now(), now(), '', '', '', '');
 
 insert into auth.identities (id, user_id, provider_id, provider, identity_data, created_at, updated_at) values
   (md5('user-produtor')::uuid, md5('user-produtor')::uuid, md5('user-produtor')::uuid::text, 'email', jsonb_build_object('sub', md5('user-produtor')::uuid::text, 'email', 'produtor@hortilink.com'), now(), now()),
   (md5('user-comprador')::uuid, md5('user-comprador')::uuid, md5('user-comprador')::uuid::text, 'email', jsonb_build_object('sub', md5('user-comprador')::uuid::text, 'email', 'comprador@hortilink.com'), now(), now()),
   (md5('user-loja')::uuid, md5('user-loja')::uuid, md5('user-loja')::uuid::text, 'email', jsonb_build_object('sub', md5('user-loja')::uuid::text, 'email', 'loja@hortilink.com'), now(), now()),
   (md5('user-produtor-2')::uuid, md5('user-produtor-2')::uuid, md5('user-produtor-2')::uuid::text, 'email', jsonb_build_object('sub', md5('user-produtor-2')::uuid::text, 'email', 'carlos@hortilink.com'), now(), now()),
-  (md5('loja-demo-2')::uuid, md5('loja-demo-2')::uuid, md5('loja-demo-2')::uuid::text, 'email', jsonb_build_object('sub', md5('loja-demo-2')::uuid::text, 'email', 'loja-demo-2@hortilink.com'), now(), now());
+  (md5('user-admin')::uuid, md5('user-admin')::uuid, md5('user-admin')::uuid::text, 'email', jsonb_build_object('sub', md5('user-admin')::uuid::text, 'email', 'admin@hortilink.com'), now(), now()),
+  (md5('loja-demo-2')::uuid, md5('loja-demo-2')::uuid, md5('loja-demo-2')::uuid::text, 'email', jsonb_build_object('sub', md5('loja-demo-2')::uuid::text, 'email', 'loja-demo-2@hortilink.com'), now(), now()),
+  (md5('loja-demo-3')::uuid, md5('loja-demo-3')::uuid, md5('loja-demo-3')::uuid::text, 'email', jsonb_build_object('sub', md5('loja-demo-3')::uuid::text, 'email', 'loja-demo-3@hortilink.com'), now(), now());
 
-insert into public.stores (id, user_id, name, address, city, hours) values
-  (md5('loja-1')::uuid, md5('user-loja')::uuid, 'Mercado Alto Tietê', 'Rua das Hortênsias, 120', 'Mogi das Cruzes', 'Segunda a sábado, 8h às 18h'),
-  (md5('loja-2')::uuid, md5('loja-demo-2')::uuid, 'Empório Vila Verde', 'Avenida das Palmeiras, 540', 'Suzano', 'Segunda a sexta, 9h às 19h');
+insert into public.stores (id, user_id, name, address, city, hours, status, dry_boxes, cold_boxes) values
+  (md5('loja-1')::uuid, md5('user-loja')::uuid, 'Mercado Alto Tietê', 'Rua das Hortênsias, 120', 'Mogi das Cruzes', 'Segunda a sábado, 8h às 18h', 'Aprovada', 20, 10),
+  (md5('loja-2')::uuid, md5('loja-demo-2')::uuid, 'Empório Vila Verde', 'Avenida das Palmeiras, 540', 'Suzano', 'Segunda a sexta, 9h às 19h', 'Aprovada', 15, 0),
+  (md5('loja-3')::uuid, md5('loja-demo-3')::uuid, 'Quitanda Recanto', 'Rua do Comércio, 45', 'Biritiba-Mirim', 'Terça a domingo, 7h às 13h', 'Pendente', 8, 4);
 
 insert into public.producer_pickup_stores (producer_id, store_id) values
   (md5('user-produtor')::uuid, md5('loja-1')::uuid),
@@ -56,5 +61,7 @@ insert into public.stock_movements (id, type, producer_id, product_id, quantity,
 insert into public.expenses (id, producer_id, type, description, amount, created_at) values
   (md5('despesa-1')::uuid, md5('user-produtor')::uuid, 'Custo', 'Adubo orgânico', 85, now() - interval '604800 seconds'),
   (md5('despesa-2')::uuid, md5('user-produtor')::uuid, 'Investimento', 'Sistema de irrigação', 420, now() - interval '86400 seconds');
+
+update public.users set role = 'admin' where id in (md5('user-admin')::uuid);
 
 select setval('public.order_number_seq', 2);
