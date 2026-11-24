@@ -1,7 +1,8 @@
 // Ponte entre React e a camada de aplicação: guarda o estado para renderizar e
 // expõe ações que chamam os casos de uso. As telas usam só `useApp()`.
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { SalvandoContext } from "./Salvando";
 
 const AppContext = createContext(null);
 
@@ -9,6 +10,9 @@ export function AppProvider({ casosDeUso, children }) {
   const [data, setData] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [loadError, setLoadError] = useState("");
+  const [saving, setSaving] = useState(false);
+  /** Gravação em andamento: um segundo clique reaproveita a mesma (PROD-03). */
+  const emAndamento = useRef(null);
 
   useEffect(() => {
     Promise.all([casosDeUso.carregarEstado(), casosDeUso.carregarSessao()])
@@ -21,15 +25,27 @@ export function AppProvider({ casosDeUso, children }) {
 
   const value = useMemo(() => {
     if (!data) return null;
-    /** Roda um caso de uso e atualiza a tela com o novo estado. */
-    const aplicar = async (casoDeUso, ...args) => {
-      const resultado = await casoDeUso(...args);
-      setData(resultado.state);
-      return resultado;
+    /** Roda um caso de uso e atualiza a tela com o novo estado (uma gravação por vez). */
+    const aplicar = (casoDeUso, ...args) => {
+      if (emAndamento.current) return emAndamento.current;
+      setSaving(true);
+      const execucao = (async () => {
+        try {
+          const resultado = await casoDeUso(...args);
+          setData(resultado.state);
+          return resultado;
+        } finally {
+          emAndamento.current = null;
+          setSaving(false);
+        }
+      })();
+      emAndamento.current = execucao;
+      return execucao;
     };
 
     return {
       ...data,
+      saving,
       currentUser: data.users.find((user) => user.id === currentUserId) ?? null,
 
       login: async (credenciais) => {
@@ -44,9 +60,13 @@ export function AppProvider({ casosDeUso, children }) {
         await casosDeUso.sair();
         setCurrentUserId(null);
       },
+      updateProfile: (dados) => aplicar(casosDeUso.atualizarPerfil, currentUserId, dados),
+      changePassword: (senha, confirmacao) =>
+        aplicar(casosDeUso.trocarSenha, currentUserId, senha, confirmacao),
 
       saveProduct: (dados) => aplicar(casosDeUso.salvarProduto, dados),
       deleteProduct: (id) => aplicar(casosDeUso.excluirProduto, id),
+      deleteProducts: (ids) => aplicar(casosDeUso.excluirProdutos, ids),
       addOffer: (dados) => aplicar(casosDeUso.criarOferta, dados),
       endOffer: (id) => aplicar(casosDeUso.encerrarOferta, id),
       saveProducerPickupStores: (storeIds) =>
@@ -55,8 +75,16 @@ export function AppProvider({ casosDeUso, children }) {
       addOrder: async (dados) => (await aplicar(casosDeUso.criarPedido, dados)).order,
       payOrder: (id, metodo) => aplicar(casosDeUso.pagarPedido, id, metodo),
       confirmOrderDelivered: (id) => aplicar(casosDeUso.confirmarEntregaNaLoja, id),
+      getPickupCode: (id) => casosDeUso.codigoDeRetirada(id),
 
       saveStore: (dados) => aplicar(casosDeUso.salvarLoja, currentUserId, dados),
+      confirmOrderReceived: (id) => aplicar(casosDeUso.confirmarRecebimento, id),
+      confirmPickup: (id, codigo) => aplicar(casosDeUso.confirmarRetirada, id, codigo),
+
+      reviewStore: (id, decisao) => aplicar(casosDeUso.avaliarLoja, id, decisao),
+      saveRewardSettings: (dados) => aplicar(casosDeUso.salvarConfigRecompensa, dados),
+      closeRewardMonth: (storeId, month) =>
+        aplicar(casosDeUso.fecharMesRecompensa, storeId, month),
 
       addStockEntry: (dados) => aplicar(casosDeUso.registrarEntrada, dados),
       addStockLoss: (dados) => aplicar(casosDeUso.registrarPerda, dados),
@@ -64,11 +92,15 @@ export function AppProvider({ casosDeUso, children }) {
         aplicar(casosDeUso.registrarDespesa, { ...dados, producerId: currentUserId }),
       deleteExpense: (id) => aplicar(casosDeUso.excluirDespesa, id),
     };
-  }, [data, currentUserId, casosDeUso]);
+  }, [data, currentUserId, casosDeUso, saving]);
 
   if (loadError) return <p className="app-loading">{loadError}</p>;
   if (!value) return <p className="app-loading">Carregando…</p>;
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <AppContext.Provider value={value}>
+      <SalvandoContext.Provider value={saving}>{children}</SalvandoContext.Provider>
+    </AppContext.Provider>
+  );
 }
 
 export function useApp() {

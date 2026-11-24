@@ -10,8 +10,12 @@ import { ProducerPublic } from "../screens/comprador/ProducerPublic";
 import { ProducersCatalog } from "../screens/comprador/ProducersCatalog";
 import { PurchaseForm } from "../screens/comprador/PurchaseForm";
 import { TrackingOrders } from "../screens/comprador/TrackingOrders";
+import { AdminRewards } from "../screens/admin/AdminRewards";
+import { AdminStores } from "../screens/admin/AdminStores";
 import { StoreOrders } from "../screens/loja/StoreOrders";
 import { StoreProfile } from "../screens/loja/StoreProfile";
+import { StoreRewards } from "../screens/loja/StoreRewards";
+import { ProfileSettings } from "../screens/ProfileSettings";
 import { OfferForm } from "../screens/produtor/OfferForm";
 import { ProducerCatalog } from "../screens/produtor/ProducerCatalog";
 import { ProducerOffers } from "../screens/produtor/ProducerOffers";
@@ -28,6 +32,7 @@ import { StockMovementForm } from "../screens/produtor/StockMovementForm";
 /** Tela da aba atual do menu. */
 export function TabScreen({ role, tab, setRoute, abrirAba }) {
   const abrir = (name, params = {}) => setRoute({ name, ...params });
+  if (tab === "perfil") return <ProfileSettings />;
 
   if (role === "produtor") {
     if (tab === "estoque")
@@ -60,7 +65,10 @@ export function TabScreen({ role, tab, setRoute, abrirAba }) {
     if (tab === "acompanhar") return <TrackingOrders open={(id) => abrir("rastreio", { id })} />;
     return <BuyerOffers buy={(id) => abrir("compra", { id, type: ORIGEM.OFERTA })} />;
   }
-  return tab === "pedidos" ? <StoreOrders /> : <StoreProfile />;
+  if (role === "admin") return tab === "recompensas" ? <AdminRewards /> : <AdminStores />;
+  if (tab === "pedidos") return <StoreOrders />;
+  if (tab === "recompensas") return <StoreRewards />;
+  return <StoreProfile />;
 }
 
 /** Tela aberta por cima da aba (formulários, detalhes e fluxo de pagamento). */

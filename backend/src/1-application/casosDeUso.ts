@@ -3,7 +3,18 @@
 // Toda escrita do sistema passa por aqui (o cliente só lê do banco, via RLS).
 
 import {
+  atualizarPerfil,
+  avaliarLoja,
+  codigoDeRetirada,
   confirmarEntregaNaLoja,
+  confirmarRecebimentoNaLoja,
+  confirmarRetirada,
+  type DadosPerfil,
+  excluirProdutos,
+  fecharMesRecompensa,
+  lojaAprovada,
+  pedidoNaLoja,
+  salvarConfigRecompensa,
   criarOferta,
   criarPedidoDireto,
   type DadosCompra,
@@ -44,9 +55,17 @@ export type EntradaDespesa = Omit<DadosDespesa, "producerId">;
 export interface Dependencias {
   repositorio: RepositorioPort;
   relogio?: Relogio;
+  /** Segredo do código de retirada (US10). Só o servidor conhece. */
+  segredoRetirada?: string | undefined;
 }
 
-export function criarCasosDeUso({ repositorio, relogio = () => new Date() }: Dependencias) {
+export const SEGREDO_RETIRADA_DEMO = "hortilink-demo";
+
+export function criarCasosDeUso({
+  repositorio,
+  relogio = () => new Date(),
+  segredoRetirada = SEGREDO_RETIRADA_DEMO,
+}: Dependencias) {
   /**
    * Carrega o estado, identifica o usuário, roda `regra` e grava o resultado.
    * `regra` pode lançar erros de autorização antes de chamar o domínio.
@@ -82,10 +101,27 @@ export function criarCasosDeUso({ repositorio, relogio = () => new Date() }: Dep
     return item;
   }
 
-  /** Toda loja citada precisa existir (evita oferta ligada a ponto inexistente). */
-  const exigirLojas = (estado: Estado, storeIds: string[]) => {
-    const lojaInexistente = storeIds.find((id) => !estado.stores.some((loja) => loja.id === id));
-    if (lojaInexistente) throw naoEncontrado("Ponto de retirada não encontrado");
+  /**
+   * Toda loja citada precisa existir e estar aprovada pelo administrador (US14).
+   * `jaEscolhidas` continuam aceitas (o produtor pode remover outras sem erro).
+   */
+  const exigirLojas = (estado: Estado, storeIds: string[], jaEscolhidas: string[] = []) => {
+    for (const id of storeIds) {
+      const loja = estado.stores.find((item) => item.id === id);
+      if (!loja) throw naoEncontrado("Ponto de retirada não encontrado");
+      if (!lojaAprovada(loja) && !jaEscolhidas.includes(id))
+        throw violouRegra(`O ponto "${loja.name}" ainda não foi aprovado pela HortiLink`);
+    }
+  };
+
+  /** Confere que o pedido é retirado na loja do usuário logado (perfil loja). */
+  const exigirPedidoDaMinhaLoja = (estado: Estado, usuario: Usuario, pedidoId: string) => {
+    exigirPerfil(usuario, "loja");
+    const loja = estado.stores.find((item) => item.userId === usuario.id);
+    if (!loja) throw naoEncontrado("Cadastre seu ponto de coleta primeiro");
+    const pedido = estado.orders.find((item) => item.id === pedidoId);
+    if (!pedido) throw naoEncontrado("Pedido não encontrado");
+    if (pedido.storeId !== loja.id) throw proibido("Este pedido não é retirado no seu ponto");
   };
 
   return {
@@ -95,6 +131,13 @@ export function criarCasosDeUso({ repositorio, relogio = () => new Date() }: Dep
         exigirPerfil(usuario, "produtor");
         if (dados.id) doUsuario(estado.products, dados.id, (p) => p.producerId, usuario, "Produto");
         return salvarProduto(estado, { ...dados, producerId: usuario.id });
+      }),
+
+    excluirProdutos: (userId: string, produtoIds: string[]) =>
+      executar(userId, (estado, usuario) => {
+        exigirPerfil(usuario, "produtor");
+        for (const id of produtoIds) doUsuario(estado.products, id, (p) => p.producerId, usuario, "Produto");
+        return excluirProdutos(estado, produtoIds);
       }),
 
     excluirProduto: (userId: string, produtoId: string) =>
@@ -122,7 +165,7 @@ export function criarCasosDeUso({ repositorio, relogio = () => new Date() }: Dep
     salvarPontosRetirada: (userId: string, storeIds: string[]) =>
       executar(userId, (estado, usuario) => {
         exigirPerfil(usuario, "produtor");
-        exigirLojas(estado, storeIds);
+        exigirLojas(estado, storeIds, usuario.pickupStoreIds);
         return salvarPontosRetirada(estado, usuario.id, storeIds);
       }),
 
@@ -175,11 +218,57 @@ export function criarCasosDeUso({ repositorio, relogio = () => new Date() }: Dep
         return pagarPedido(estado, pedidoId, metodo, agora);
       }),
 
+    /** Código de retirada: só o comprador do pedido, e só quando o produto está na loja. */
+    async codigoDeRetirada(userId: string, pedidoId: string): Promise<string> {
+      const estado = await repositorio.carregar();
+      const usuario = estado.users.find((item) => item.id === userId);
+      if (!usuario) throw naoAutenticado();
+      exigirPerfil(usuario, "comprador");
+      const pedido = doUsuario(estado.orders, pedidoId, (o) => o.buyerId, usuario, "Pedido");
+      if (!pedidoNaLoja(pedido)) throw violouRegra("O código aparece quando o produto chegar à loja");
+      return codigoDeRetirada(pedido.id, segredoRetirada);
+    },
+
     // ------------------------------------------------------------ Loja parceira
     salvarLoja: (userId: string, dados: DadosLoja) =>
       executar(userId, (estado, usuario) => {
         exigirPerfil(usuario, "loja");
         return salvarLoja(estado, usuario.id, dados);
+      }),
+
+    confirmarRecebimento: (userId: string, pedidoId: string) =>
+      executar(userId, (estado, usuario, agora) => {
+        exigirPedidoDaMinhaLoja(estado, usuario, pedidoId);
+        return confirmarRecebimentoNaLoja(estado, pedidoId, agora);
+      }),
+
+    confirmarRetirada: (userId: string, pedidoId: string, codigo: string) =>
+      executar(userId, (estado, usuario, agora) => {
+        exigirPedidoDaMinhaLoja(estado, usuario, pedidoId);
+        return confirmarRetirada(estado, pedidoId, codigo, segredoRetirada, agora);
+      }),
+
+    // ------------------------------------------------------------ Todos os perfis
+    atualizarPerfil: (userId: string, dados: DadosPerfil) =>
+      executar(userId, (estado, usuario) => atualizarPerfil(estado, usuario.id, dados)),
+
+    // ------------------------------------------------------------ Administrador
+    avaliarLoja: (userId: string, lojaId: string, decisao: { status: string; note?: string }) =>
+      executar(userId, (estado, usuario, agora) => {
+        exigirPerfil(usuario, "admin");
+        return avaliarLoja(estado, lojaId, decisao, agora);
+      }),
+
+    salvarConfigRecompensa: (userId: string, dados: { fixedAmount: number | string; percent: number | string }) =>
+      executar(userId, (estado, usuario) => {
+        exigirPerfil(usuario, "admin");
+        return salvarConfigRecompensa(estado, dados);
+      }),
+
+    fecharMesRecompensa: (userId: string, storeId: string, month: string) =>
+      executar(userId, (estado, usuario, agora) => {
+        exigirPerfil(usuario, "admin");
+        return fecharMesRecompensa(estado, storeId, month, agora);
       }),
   };
 }

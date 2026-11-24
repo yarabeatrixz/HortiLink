@@ -11,7 +11,8 @@ const CAMPOS = {
   produto: ["name", "category", "unit", "price", "quantity", "minQuantity", "photo"],
   oferta: ["productId", "quantity", "promotionalPrice", "city", "validityDays", "storeIds"],
   pedido: ["type", "sourceId", "productId", "quantity", "storeId"],
-  loja: ["name", "address", "city", "hours"],
+  loja: ["name", "address", "city", "hours", "photo", "dryBoxes", "coldBoxes"],
+  perfil: ["name", "city"],
   entrada: ["productId", "quantity", "unitCost", "note"],
   perda: ["productId", "quantity", "reason", "note"],
   despesa: ["type", "description", "amount"],
@@ -86,6 +87,29 @@ export function criarApiEscrita({ urlBase, obterToken, fetch = globalThis.fetch 
       semRetorno("POST", `/orders/${id(pedidoId)}/delivered`),
 
     salvarLoja: (dados) => semRetorno("PUT", "/stores/me", escolher(dados, CAMPOS.loja)),
+    confirmarRecebimento: (pedidoId) => semRetorno("POST", `/orders/${id(pedidoId)}/received`),
+    confirmarRetirada: (pedidoId, codigo) =>
+      semRetorno("POST", `/orders/${id(pedidoId)}/picked-up`, { code: String(codigo) }),
+    async codigoDeRetirada(pedidoId) {
+      const { code } = await enviar("GET", `/orders/${id(pedidoId)}/pickup-code`);
+      return code;
+    },
+
+    excluirProdutos: (ids) => semRetorno("POST", "/products/delete", { ids }),
+    atualizarPerfil: (dados) => semRetorno("PUT", "/users/me", escolher(dados, CAMPOS.perfil)),
+
+    avaliarLoja: (lojaId, decisao) =>
+      semRetorno("POST", `/admin/stores/${id(lojaId)}/review`, {
+        status: decisao.status,
+        ...(decisao.note ? { note: decisao.note } : {}),
+      }),
+    salvarConfigRecompensa: (dados) =>
+      semRetorno("PUT", "/admin/reward-settings", {
+        fixedAmount: dados.fixedAmount,
+        percent: dados.percent,
+      }),
+    fecharMesRecompensa: (storeId, month) =>
+      semRetorno("POST", "/admin/reward-payouts", { storeId, month }),
 
     registrarEntrada: (dados) =>
       semRetorno("POST", "/stock/entries", escolher(dados, CAMPOS.entrada)),

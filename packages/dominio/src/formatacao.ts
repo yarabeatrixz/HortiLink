@@ -18,6 +18,7 @@ export const dataCurta = (iso: DataIso | number): string => new Date(iso).toLoca
 
 export const dataHora = (iso: DataIso | number): string => new Date(iso).toLocaleString("pt-BR");
 
-export const km = (distancia: number): string => `${String(distancia).replace(".", ",")} km`;
+export const km = (distancia: number | null | undefined): string =>
+  distancia == null ? "Distância não informada" : `${String(distancia).replace(".", ",")} km`;
 
 export const inicial = (nome: string | undefined): string => nome?.charAt(0) ?? "";

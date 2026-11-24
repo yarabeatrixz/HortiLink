@@ -44,7 +44,11 @@ function usuariosComDonosDeLoja(estado: Estado): Usuario[] {
 
 export function gerarSeedSql(estado: Estado, referencia: Date): string {
   const usuarios = usuariosComDonosDeLoja(estado);
-  const metadados = (u: Usuario) => texto(JSON.stringify({ role: u.role, name: u.name, city: u.city }));
+  // O banco recusa criar admin pelo cadastro (migration 0004): entra como comprador e é promovido no fim.
+  const perfilNoCadastro = (u: Usuario) => (u.role === "admin" ? "comprador" : u.role);
+  const metadados = (u: Usuario) =>
+    texto(JSON.stringify({ role: perfilNoCadastro(u), name: u.name, city: u.city }));
+  const admins = usuarios.filter((u) => u.role === "admin");
 
   const partes = [
     "-- Gerado por `pnpm --filter @hortilink/backend gerar:seed` a partir de criarExemplo().",
@@ -89,9 +93,10 @@ export function gerarSeedSql(estado: Estado, referencia: Date): string {
     ),
     insert(
       "public.stores",
-      ["id", "user_id", "name", "address", "city", "hours"],
+      ["id", "user_id", "name", "address", "city", "hours", "status", "dry_boxes", "cold_boxes"],
       estado.stores.map((s) => [
         uuid(s.id), uuid(s.userId), texto(s.name), texto(s.address), texto(s.city), texto(s.hours),
+        texto(s.status), String(s.dryBoxes), String(s.coldBoxes),
       ]),
     ),
     insert(
@@ -152,6 +157,9 @@ export function gerarSeedSql(estado: Estado, referencia: Date): string {
         uuid(d.id), uuid(d.producerId), texto(d.type), texto(d.description), String(d.amount), quando(d.createdAt, referencia),
       ]),
     ),
+    admins.length
+      ? `update public.users set role = 'admin' where id in (${admins.map((u) => uuid(u.id)).join(", ")});\n`
+      : "",
     `select setval('public.order_number_seq', ${Math.max(estado.nextOrderNumber - 1, 1)});\n`,
   ];
   return partes.filter(Boolean).join("\n");

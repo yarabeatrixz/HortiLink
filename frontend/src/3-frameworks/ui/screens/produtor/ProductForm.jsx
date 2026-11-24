@@ -110,7 +110,7 @@ export function ProductForm({ id, back }) {
           step="0.01"
           value={form.minQuantity}
           onChange={set("minQuantity")}
-          placeholder="Opcional · avisa quando o estoque chegar nesse valor"
+          placeholder="Opcional · avisa quando o estoque ficar abaixo desse valor"
         />
         <ErrorMessage>{error}</ErrorMessage>
         <div className="form-actions">

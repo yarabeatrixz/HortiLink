@@ -11,6 +11,7 @@ import {
   type Operacao,
   paraEstado,
   TABELAS,
+  TABELAS_OPCIONAIS,
   type Tabela,
 } from "@hortilink/banco";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -26,11 +27,21 @@ export function clienteServidor(config: ConfigSupabase): SupabaseClient {
 export function criarRepositorioSupabase(config: ConfigSupabase, cliente = clienteServidor(config)): RepositorioPort {
   async function lerTabela(tabela: Tabela) {
     const { data, error } = await cliente.from(tabela).select("*");
+    // Tabela da migration 0004 ainda não criada: segue sem ela (a escrita é que vai avisar).
+    if (error && TABELAS_OPCIONAIS.includes(tabela)) return [];
     if (error) throw new Error(`Falha ao ler ${tabela}: ${error.message}`);
     return data ?? [];
   }
 
   async function executar(operacao: Operacao): Promise<void> {
+    if (operacao.tipo === "atualizar") {
+      // users nasce no Auth: só atualiza nome e cidade, nunca cria nem muda o perfil.
+      for (const { id, ...campos } of operacao.linhas) {
+        const { error } = await cliente.from("users").update(campos).eq("id", String(id));
+        if (error) throw new Error(`Falha ao atualizar users: ${error.message}`);
+      }
+      return;
+    }
     if (operacao.tipo === "gravar") {
       // order_timeline só tem chave primária `id` (gerada pelo banco): os eventos são
       // só acrescentados e a "chave" deles é a linha inteira, então uma linha "mudada" é

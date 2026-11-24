@@ -8,6 +8,7 @@ import type {
   MotivoPerda,
   Origem,
   Perfil,
+  StatusLoja,
   StatusPedido,
   StatusProposta,
   TipoDespesa,
@@ -65,6 +66,34 @@ export interface Loja {
   hours: string;
   /** Distância simulada; com geolocalização real, calculada no servidor. */
   distanceKm?: number;
+  /** Só lojas "Aprovada" aparecem como ponto de retirada (US14). */
+  status: StatusLoja;
+  /** Motivo da reprovação/suspensão, escrito pelo administrador. */
+  reviewNote?: string;
+  reviewedAt?: DataIso;
+  /** Foto do local (LOJA-01): base64 até 1 MB ou endereço https. */
+  photo?: string;
+  /** Capacidade de armazenamento em caixas (US15). 0 = não informada (sem limite). */
+  dryBoxes: number;
+  coldBoxes: number;
+}
+
+/** Regra da recompensa às lojas (US16): valor fixo + porcentagem por pedido retirado. */
+export interface ConfigRecompensa {
+  fixedAmount: number;
+  percent: number;
+}
+
+/** Fechamento do mês de uma loja: o valor fica registrado e não muda mais. */
+export interface FechamentoRecompensa {
+  id: string;
+  storeId: string;
+  /** Mês no formato AAAA-MM. */
+  month: string;
+  ordersCount: number;
+  salesTotal: number;
+  amount: number;
+  createdAt: DataIso;
 }
 
 export interface EventoLinhaDoTempo {
@@ -91,6 +120,7 @@ export interface Pedido {
   paidAt?: DataIso;
   paymentMethod?: MetodoPagamento;
   deliveredAt?: DataIso;
+  pickedUpAt?: DataIso;
 }
 
 export interface Proposta {
@@ -141,6 +171,8 @@ export interface Estado {
   proposals: Proposta[];
   stockMovements: MovimentoEstoque[];
   expenses: Despesa[];
+  rewardSettings: ConfigRecompensa;
+  rewardPayouts: FechamentoRecompensa[];
   nextOrderNumber: number;
 }
 

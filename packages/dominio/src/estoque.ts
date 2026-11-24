@@ -19,10 +19,13 @@ export interface DadosPerda {
   note?: string;
 }
 
-/** Ok, baixo (quantidade ≤ mínimo) ou zerado. Sem mínimo definido, só avisa quando zera. */
+/**
+ * Ok, baixo (quantidade ABAIXO do mínimo) ou zerado. Sem mínimo definido, só avisa quando zera.
+ * Quantidade igual ao mínimo já está ok (PROD-04: o alerta não sumia ao repor até o mínimo).
+ */
 export function statusEstoque(produto: Pick<Produto, "quantity" | "minQuantity">): StatusEstoque {
   if (produto.quantity <= 0) return STATUS_ESTOQUE.ZERADO;
-  if (produto.quantity <= (produto.minQuantity ?? 0)) return STATUS_ESTOQUE.BAIXO;
+  if (produto.quantity < (produto.minQuantity ?? 0)) return STATUS_ESTOQUE.BAIXO;
   return STATUS_ESTOQUE.OK;
 }
 

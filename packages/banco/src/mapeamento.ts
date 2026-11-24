@@ -3,9 +3,11 @@
 // Sem I/O: testável sem banco. Leitura serve ao front e à API; gravação, só à API.
 
 import type {
+  ConfigRecompensa,
   Despesa,
   Estado,
   EventoLinhaDoTempo,
+  FechamentoRecompensa,
   Loja,
   MovimentoEstoque,
   Oferta,
@@ -30,6 +32,8 @@ export interface Linhas {
   order_timeline: Linha[];
   stock_movements: Linha[];
   expenses: Linha[];
+  reward_settings: Linha[];
+  reward_payouts: Linha[];
 }
 
 export type Tabela = keyof Linhas;
@@ -47,7 +51,18 @@ export const TABELAS: Tabela[] = [
   "order_timeline",
   "stock_movements",
   "expenses",
+  "reward_settings",
+  "reward_payouts",
 ];
+
+/**
+ * Tabelas criadas na migration 0004 (Sprint 2). Se a migration ainda não rodou no
+ * banco, a leitura delas falha: os adapters tratam como lista vazia para o app abrir.
+ */
+export const TABELAS_OPCIONAIS: Tabela[] = ["reward_settings", "reward_payouts"];
+
+/** Regra de recompensa enquanto o administrador não define outra. */
+export const RECOMPENSA_PADRAO: ConfigRecompensa = { fixedAmount: 0, percent: 0 };
 
 const n = (valor: unknown): number => Number(valor);
 const s = (valor: unknown): string => String(valor);
@@ -98,7 +113,10 @@ export function paraEstado(linhas: Linhas): Estado {
     paidAt: opcional(l.paid_at, s),
     paymentMethod: opcional(l.payment_method, (v) => v as NonNullable<Pedido["paymentMethod"]>),
     deliveredAt: opcional(l.delivered_at, s),
+    pickedUpAt: opcional(l.picked_up_at, s),
   }));
+
+  const configRecompensa = linhas.reward_settings[0];
 
   return {
     users,
@@ -111,6 +129,13 @@ export function paraEstado(linhas: Linhas): Estado {
         city: s(l.city),
         hours: s(l.hours),
         distanceKm: opcional(l.distance_km, n),
+        // Sem a coluna (migration 0004 ainda não aplicada) as lojas existentes seguem valendo.
+        status: (l.status ?? "Aprovada") as Loja["status"],
+        reviewNote: opcional(l.review_note, s),
+        reviewedAt: opcional(l.reviewed_at, s),
+        photo: opcional(l.photo, s),
+        dryBoxes: n(l.dry_boxes ?? 0),
+        coldBoxes: n(l.cold_boxes ?? 0),
       }),
     ),
     products: linhas.products.map(
@@ -180,6 +205,20 @@ export function paraEstado(linhas: Linhas): Estado {
         createdAt: s(l.created_at),
       }),
     ),
+    rewardSettings: configRecompensa
+      ? { fixedAmount: n(configRecompensa.fixed_amount), percent: n(configRecompensa.percent) }
+      : { ...RECOMPENSA_PADRAO },
+    rewardPayouts: linhas.reward_payouts.map(
+      (l): FechamentoRecompensa => ({
+        id: s(l.id),
+        storeId: s(l.store_id),
+        month: s(l.month),
+        ordersCount: n(l.orders_count),
+        salesTotal: n(l.sales_total),
+        amount: n(l.amount),
+        createdAt: s(l.created_at),
+      }),
+    ),
     nextOrderNumber: Math.max(0, ...orders.map((o) => numeroDoPedido(o.orderNumber))) + 1,
   };
 }
@@ -191,6 +230,8 @@ export function paraLinhas(estado: Estado): Omit<Linhas, "users"> {
   return {
     stores: estado.stores.map((x) => ({
       id: x.id, user_id: x.userId, name: x.name, address: x.address, city: x.city, hours: x.hours,
+      status: x.status, review_note: nuloSeVazio(x.reviewNote), reviewed_at: nuloSeVazio(x.reviewedAt),
+      photo: nuloSeVazio(x.photo || undefined), dry_boxes: x.dryBoxes, cold_boxes: x.coldBoxes,
       // distance_km não existe no banco oficial: a distância é simulada no front.
     })),
     producer_pickup_stores: estado.users.flatMap((u) =>
@@ -217,6 +258,7 @@ export function paraLinhas(estado: Estado): Omit<Linhas, "users"> {
       store_id: x.storeId, status: x.status, proposal_id: nuloSeVazio(x.proposalId),
       payment_method: nuloSeVazio(x.paymentMethod), created_at: x.createdAt,
       accepted_at: nuloSeVazio(x.acceptedAt), paid_at: nuloSeVazio(x.paidAt), delivered_at: nuloSeVazio(x.deliveredAt),
+      picked_up_at: nuloSeVazio(x.pickedUpAt),
     })),
     order_timeline: estado.orders.flatMap((o) => o.timeline.map((e) => ({ order_id: o.id, label: e.label, created_at: e.at }))),
     stock_movements: estado.stockMovements.map((x) => ({
@@ -227,6 +269,13 @@ export function paraLinhas(estado: Estado): Omit<Linhas, "users"> {
       id: x.id, producer_id: x.producerId, type: x.type, description: x.description, amount: x.amount,
       created_at: x.createdAt,
     })),
+    reward_settings: [
+      { id: 1, fixed_amount: estado.rewardSettings.fixedAmount, percent: estado.rewardSettings.percent },
+    ],
+    reward_payouts: estado.rewardPayouts.map((x) => ({
+      id: x.id, store_id: x.storeId, month: x.month, orders_count: x.ordersCount, sales_total: x.salesTotal,
+      amount: x.amount, created_at: x.createdAt,
+    })),
   };
 }
 
@@ -234,7 +283,9 @@ export function paraLinhas(estado: Estado): Omit<Linhas, "users"> {
 
 export type Operacao =
   | { tipo: "gravar"; tabela: Tabela; linhas: Linha[] }
-  | { tipo: "apagar"; tabela: Tabela; chaves: Linha[] };
+  | { tipo: "apagar"; tabela: Tabela; chaves: Linha[] }
+  /** users é criada pelo Auth: o servidor só ATUALIZA nome e cidade (GER-01). */
+  | { tipo: "atualizar"; tabela: "users"; linhas: Linha[] };
 
 /** Chave de cada tabela (as de ligação não têm `id`). */
 const CHAVES: Record<Exclude<Tabela, "users">, string[]> = {
@@ -248,6 +299,8 @@ const CHAVES: Record<Exclude<Tabela, "users">, string[]> = {
   order_timeline: ["order_id", "label", "created_at"],
   stock_movements: ["id"],
   expenses: ["id"],
+  reward_settings: ["id"],
+  reward_payouts: ["id"],
 };
 
 /** Ordem que respeita as chaves estrangeiras: pais antes de filhos ao gravar. */
@@ -262,6 +315,8 @@ const ORDEM: Exclude<Tabela, "users">[] = [
   "order_timeline",
   "stock_movements",
   "expenses",
+  "reward_settings",
+  "reward_payouts",
 ];
 
 const chaveDe = (tabela: Exclude<Tabela, "users">, linha: Linha) =>
@@ -290,7 +345,14 @@ export function calcularOperacoes(antes: Estado, depois: Estado): Operacao[] {
     const removidas = linhasAntes[tabela].filter((l) => !atuais.has(chaveDe(tabela, l)));
     if (removidas.length) apagar.unshift({ tipo: "apagar", tabela, chaves: removidas.map((l) => soChave(tabela, l)) });
   }
-  return [...apagar, ...gravar];
+  const usuariosAntes = new Map(antes.users.map((u) => [u.id, `${u.name}|${u.city}`]));
+  const usuariosMudados = depois.users
+    .filter((u) => usuariosAntes.has(u.id) && usuariosAntes.get(u.id) !== `${u.name}|${u.city}`)
+    .map((u) => ({ id: u.id, name: u.name, city: u.city }));
+  const atualizar: Operacao[] = usuariosMudados.length
+    ? [{ tipo: "atualizar", tabela: "users", linhas: usuariosMudados }]
+    : [];
+  return [...apagar, ...atualizar, ...gravar];
 }
 
 export const chavesDaTabela = (tabela: Exclude<Tabela, "users">): string[] => CHAVES[tabela];

@@ -85,3 +85,23 @@ describe("calcularOperacoes", () => {
     ]);
   });
 });
+
+describe("mapeamento da Sprint 2", () => {
+  it("lojas sem as colunas novas (banco antes da migration 0004) continuam aprovadas", () => {
+    const { linhas } = linhasDoExemplo();
+    linhas.stores = linhas.stores.map(({ status: _s, dry_boxes: _d, cold_boxes: _c, ...resto }) => resto);
+    linhas.reward_settings = [];
+    linhas.reward_payouts = [];
+    const estado = paraEstado(linhas);
+    expect(estado.stores[0]).toMatchObject({ status: "Aprovada", dryBoxes: 0, coldBoxes: 0 });
+    expect(estado.rewardSettings).toEqual({ fixedAmount: 0, percent: 0 });
+  });
+
+  it("mudar nome/cidade gera só um update em users (sem tocar e-mail nem perfil)", () => {
+    const antes = criarExemplo(agora);
+    const depois = { ...antes, users: antes.users.map((u) => (u.id === "user-loja" ? { ...u, city: "Suzano" } : u)) };
+    expect(calcularOperacoes(antes, depois)).toEqual([
+      { tipo: "atualizar", tabela: "users", linhas: [{ id: "user-loja", name: "Ana Pereira", city: "Suzano" }] },
+    ]);
+  });
+});

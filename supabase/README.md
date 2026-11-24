@@ -4,6 +4,7 @@
 
 | Arquivo | Conteúdo |
 |---|---|
+| **`banco-oficial/0004_sprint2.sql`** | **Sprint 2, para o banco da Yara:** perfis públicos (COMP-01), perfil admin, status/foto/capacidade das lojas, retirada e recompensa. Rodar no SQL Editor **antes** de publicar esta versão (idempotente). |
 | `migrations/0001_schema.sql` | tabelas (espelham `packages/dominio/src/tipos.ts`), enums, índices, trigger que cria o perfil no cadastro, **RLS em todas as tabelas** |
 | `auditoria/auditoria-completa.sql` | auditoria de segurança **somente leitura** (RLS, policies, grants, funções, storage, realtime, auth) |
 | `seed.sql` | dados fictícios gerados de `criarExemplo()` (senha de todos: `123456`). Não editar à mão: `pnpm --filter @hortilink/backend gerar:seed` |

@@ -45,6 +45,15 @@ export function registrarRotasApi(
       },
     );
 
+    rotas.post<{ Body: { ids: string[] } }>(
+      "/products/delete",
+      { schema: { body: esquemas.esquemaExcluirProdutos } },
+      async (req) => {
+        await casos.excluirProdutos(req.userId, req.body.ids);
+        return { ok: true };
+      },
+    );
+
     rotas.delete<ComId>("/products/:id", async (req) => {
       await casos.excluirProduto(req.userId, req.params.id);
       return { ok: true };
@@ -109,10 +118,66 @@ export function registrarRotasApi(
       },
     );
 
+    rotas.get<ComId>("/orders/:id/pickup-code", async (req) => ({
+      code: await casos.codigoDeRetirada(req.userId, req.params.id),
+    }));
+
     // ------------------------------------------------------------ Loja parceira
     rotas.put<{ Body: DadosLoja }>("/stores/me", { schema: { body: esquemas.esquemaLoja } }, async (req) => {
       await casos.salvarLoja(req.userId, req.body);
       return { ok: true };
     });
+
+    rotas.post<ComId>("/orders/:id/received", async (req) => {
+      await casos.confirmarRecebimento(req.userId, req.params.id);
+      return { ok: true };
+    });
+
+    rotas.post<ComId & { Body: { code: string } }>(
+      "/orders/:id/picked-up",
+      { schema: { body: esquemas.esquemaCodigoRetirada } },
+      async (req) => {
+        await casos.confirmarRetirada(req.userId, req.params.id, req.body.code);
+        return { ok: true };
+      },
+    );
+
+    // ------------------------------------------------------------ Todos os perfis
+    rotas.put<{ Body: { name: string; city: string } }>(
+      "/users/me",
+      { schema: { body: esquemas.esquemaPerfil } },
+      async (req) => {
+        await casos.atualizarPerfil(req.userId, req.body);
+        return { ok: true };
+      },
+    );
+
+    // ------------------------------------------------------------ Administrador
+    rotas.post<ComId & { Body: { status: string; note?: string } }>(
+      "/admin/stores/:id/review",
+      { schema: { body: esquemas.esquemaAvaliarLoja } },
+      async (req) => {
+        await casos.avaliarLoja(req.userId, req.params.id, req.body);
+        return { ok: true };
+      },
+    );
+
+    rotas.put<{ Body: { fixedAmount: number | string; percent: number | string } }>(
+      "/admin/reward-settings",
+      { schema: { body: esquemas.esquemaConfigRecompensa } },
+      async (req) => {
+        await casos.salvarConfigRecompensa(req.userId, req.body);
+        return { ok: true };
+      },
+    );
+
+    rotas.post<{ Body: { storeId: string; month: string } }>(
+      "/admin/reward-payouts",
+      { schema: { body: esquemas.esquemaFechamento } },
+      async (req, res) => {
+        const { payout } = await casos.fecharMesRecompensa(req.userId, req.body.storeId, req.body.month);
+        return res.code(201).send({ ok: true, payout });
+      },
+    );
   });
 }

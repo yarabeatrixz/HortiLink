@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { km } from "@hortilink/dominio";
+import { km, lojasAprovadas } from "@hortilink/dominio";
 import { Button } from "../../components/base/Button";
 import { ErrorMessage } from "../../components/base/ErrorMessage";
 import { PageTitle } from "../../components/base/PageTitle";
@@ -12,7 +12,8 @@ import { useApp } from "../../state/AppProvider";
 export function ProducerPickupPoints() {
   const { currentUser, stores, saveProducerPickupStores } = useApp();
   const selected = currentUser.pickupStoreIds ?? [];
-  const finder = useNearbyStores(stores);
+  // Só pontos aprovados pelo administrador podem ser escolhidos (US14).
+  const finder = useNearbyStores(lojasAprovadas({ stores }));
   const [error, setError] = useState("");
 
   const toggleStore = async (storeId) => {
@@ -56,6 +57,7 @@ export function ProducerPickupPoints() {
                 <strong>{km(store.distance)}</strong>
                 <Button
                   type="button"
+                  locks
                   variant={isSelected ? "primary" : "secondary"}
                   aria-pressed={isSelected}
                   onClick={() => toggleStore(store.id)}

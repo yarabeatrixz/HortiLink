@@ -3,6 +3,7 @@
 
 import { type Origem, ORIGEM } from "./constantes";
 import { num } from "./formatacao";
+import { lojaAprovada, lojaRecebePedido } from "./lojas";
 import { ofertaAtiva } from "./ofertas";
 import type { Estado, Numerico, Oferta, Produto } from "./tipos";
 import { falha, substituir } from "./util";
@@ -41,6 +42,9 @@ export function validarCompra(
   const lojasPermitidas = oferta ? oferta.storeIds : (produtor?.pickupStoreIds ?? []);
   if (!lojasPermitidas.includes(dados.storeId))
     return falha("Selecione um ponto de retirada disponível");
+  const loja = estado.stores.find((item) => item.id === dados.storeId);
+  if (!lojaAprovada(loja)) return falha("Este ponto de retirada não está disponível no momento");
+  if (!lojaRecebePedido(estado, loja)) return falha("Este ponto de retirada está lotado. Escolha outro.");
 
   return { ok: true, produto, oferta };
 }

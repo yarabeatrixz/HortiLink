@@ -9,14 +9,38 @@ const ENDERECOS_LOCAIS = new Set([HOST_LOCAL, "localhost", "::1"]);
 export interface Ambiente {
   porta: number;
   host: string;
-  /** Origem do front-end liberada no CORS (ex.: http://localhost:5173). */
-  origemFrontend: string;
+  /**
+   * Origem(ns) do front-end liberada(s) no CORS. Várias versões do site (ex.: Sprint 1
+   * no Render e Sprint 2 na Vercel) usam a mesma API: FRONTEND_ORIGIN aceita uma lista
+   * separada por vírgula.
+   */
+  origemFrontend: string | string[];
   /**
    * "supabase" quando as chaves do Supabase estão no .env; senão "demo"
    * (dados de exemplo em memória e login de demonstração, só para desenvolvimento).
    */
   modo: "demo" | "supabase";
   supabase: ConfigSupabase | null;
+  /** Segredo do código de retirada; sem CODIGO_RETIRADA_SEGREDO usa a chave secreta do Supabase. */
+  segredoRetirada: string | undefined;
+}
+
+const ORIGEM_PADRAO = "http://localhost:5173";
+
+/** "https://a.com/, https://b.app" → ["https://a.com", "https://b.app"]; uma só vira texto. */
+function lerOrigens(valor: string | undefined): string | string[] {
+  const origens = (valor ?? ORIGEM_PADRAO)
+    .split(",")
+    .map((origem) => origem.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+  const invalida = origens.find((origem) => !/^https?:\/\/[^/\s]+$/.test(origem));
+  if (invalida) {
+    throw new Error(
+      `FRONTEND_ORIGIN inválida: "${invalida}". Use só o endereço do site, ex.: https://hortilink.vercel.app (várias: separe por vírgula).`,
+    );
+  }
+  if (!origens.length) return ORIGEM_PADRAO;
+  return origens.length === 1 ? (origens[0] as string) : origens;
 }
 
 export function lerAmbiente(variaveis: Record<string, string | undefined> = process.env): Ambiente {
@@ -48,8 +72,9 @@ export function lerAmbiente(variaveis: Record<string, string | undefined> = proc
   return {
     porta,
     host,
-    origemFrontend: variaveis.FRONTEND_ORIGIN ?? "http://localhost:5173",
+    origemFrontend: lerOrigens(variaveis.FRONTEND_ORIGIN),
     modo: supabase ? "supabase" : "demo",
     supabase,
+    segredoRetirada: variaveis.CODIGO_RETIRADA_SEGREDO?.trim() || supabase?.chaveServiceRole,
   };
 }

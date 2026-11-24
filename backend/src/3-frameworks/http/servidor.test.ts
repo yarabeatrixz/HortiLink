@@ -32,6 +32,17 @@ describe("servidor", () => {
     await app.close();
   });
 
+  it("libera várias versões do site (Render e Vercel) e bloqueia as outras", async () => {
+    const vercel = "https://hortilink-sprint2.vercel.app";
+    const app = criarServidor({ origemFrontend: [ORIGEM, vercel] });
+    const de = async (origin: string) =>
+      (await app.inject({ method: "GET", url: "/saude", headers: { origin } })).headers["access-control-allow-origin"];
+    expect(await de(vercel)).toBe(vercel);
+    expect(await de(ORIGEM)).toBe(ORIGEM);
+    expect(await de("https://site-qualquer.com")).toBeUndefined();
+    await app.close();
+  });
+
   it("rota inexistente devolve 404", async () => {
     const app = criarServidor({ origemFrontend: ORIGEM });
     const resposta = await app.inject({ method: "GET", url: "/nao-existe" });
@@ -49,6 +60,15 @@ describe("ambiente", () => {
       modo: "demo",
       supabase: null,
     });
+  });
+
+  it("FRONTEND_ORIGIN aceita lista separada por vírgula e ignora a barra final", () => {
+    expect(lerAmbiente({ FRONTEND_ORIGIN: "https://a.onrender.com/, https://b.vercel.app" }).origemFrontend).toEqual([
+      "https://a.onrender.com",
+      "https://b.vercel.app",
+    ]);
+    expect(lerAmbiente({ FRONTEND_ORIGIN: "https://a.onrender.com/" }).origemFrontend).toBe("https://a.onrender.com");
+    expect(() => lerAmbiente({ FRONTEND_ORIGIN: "https://a.com/painel" })).toThrow(/FRONTEND_ORIGIN inválida/);
   });
 
   it("com URL e service_role usa o modo supabase", () => {

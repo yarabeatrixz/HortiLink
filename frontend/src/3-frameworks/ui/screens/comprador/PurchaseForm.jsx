@@ -1,6 +1,6 @@
 import { Check } from "lucide-react";
 import { useState } from "react";
-import { ORIGEM, brl } from "@hortilink/dominio";
+import { ORIGEM, brl, lojaRecebePedido } from "@hortilink/dominio";
 import { Button } from "../../components/base/Button";
 import { ErrorMessage } from "../../components/base/ErrorMessage";
 import { FormPage } from "../../components/FormPage";
@@ -12,12 +12,15 @@ const ACIMA_DO_DISPONIVEL = "Quantidade acima da disponível";
 
 /** Compra direta de uma oferta (`type="offer"`) ou de um produto do catálogo. */
 export function PurchaseForm({ id, type, back, checkout }) {
-  const { currentUser, offers, products, stores, users, addOrder } = useApp();
+  const { currentUser, offers, orders, products, stores, users, addOrder } = useApp();
   const offer = type === ORIGEM.OFERTA ? offers.find((item) => item.id === id) : null;
   const product = products.find((item) => item.id === (offer?.productId ?? id));
   const producer = users.find((item) => item.id === product?.producerId);
   const storeIds = offer?.storeIds ?? producer?.pickupStoreIds ?? [];
-  const availableStores = stores.filter((store) => storeIds.includes(store.id));
+  // Loja suspensa ou lotada some da escolha (US14 e US15).
+  const availableStores = stores.filter(
+    (store) => storeIds.includes(store.id) && lojaRecebePedido({ orders }, store),
+  );
   const price = offer?.promotionalPrice ?? product?.price ?? 0;
   const available = offer?.quantity ?? product?.quantity ?? 0;
   const [quantity, setQuantity] = useState(1);
@@ -96,6 +99,11 @@ export function PurchaseForm({ id, type, back, checkout }) {
             <b>Ponto de retirada</b>
           </legend>
           <div>
+            {!availableStores.length && (
+              <p className="no-stores">
+                Nenhum ponto de retirada disponível agora para este produto. Tente mais tarde.
+              </p>
+            )}
             {availableStores.map((store) => (
               <label className={storeId === store.id ? "selected" : ""} key={store.id}>
                 <input

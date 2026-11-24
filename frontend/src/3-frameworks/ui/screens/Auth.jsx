@@ -1,13 +1,13 @@
-import { ShoppingBasket, Sprout, Store } from "lucide-react";
+import { ShieldCheck, ShoppingBasket, Sprout, Store } from "lucide-react";
 import { useState } from "react";
-import { PERFIS, SENHA_MINIMA } from "@hortilink/dominio";
+import { PERFIS, PERFIS_CADASTRO, SENHA_MINIMA } from "@hortilink/dominio";
 import { Button } from "../components/base/Button";
 import { ErrorMessage } from "../components/base/ErrorMessage";
 import { Field } from "../components/base/Field";
 import { Logo } from "../components/Logo";
 import { useApp } from "../state/AppProvider";
 
-const ICONE_PERFIL = { produtor: Sprout, comprador: ShoppingBasket, loja: Store };
+const ICONE_PERFIL = { produtor: Sprout, comprador: ShoppingBasket, loja: Store, admin: ShieldCheck };
 const FORM_VAZIO = { name: "", city: "", email: "", password: "" };
 
 export function Auth() {
@@ -57,7 +57,8 @@ export function Auth() {
               : "Escolha como você participa da rede regional."}
           </p>
           <div className="role-grid" role="radiogroup" aria-label="Perfil de acesso">
-            {PERFIS.map((perfil) => {
+            {/* Administrador só entra: a conta é criada pela equipe, não pelo cadastro. */}
+            {(isLogin ? PERFIS : PERFIS_CADASTRO).map((perfil) => {
               const Icon = ICONE_PERFIL[perfil.id];
               const selecionado = role === perfil.id;
               return (
@@ -118,6 +119,7 @@ export function Auth() {
             className="switch-auth"
             onClick={() => {
               setMode(isLogin ? "cadastro" : "login");
+              if (isLogin && role === "admin") setRole("produtor");
               setError("");
             }}
           >
@@ -128,6 +130,7 @@ export function Auth() {
             <span>produtor@hortilink.com</span>
             <span>comprador@hortilink.com</span>
             <span>loja@hortilink.com</span>
+            <span>admin@hortilink.com</span>
           </div>
         </form>
       </section>

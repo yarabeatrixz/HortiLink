@@ -35,7 +35,9 @@ As regras ficam no pacote `@hortilink/dominio` (`packages/dominio/src`, TypeScri
 
 Valores fixos (status, categorias, unidades, eventos da linha do tempo): `packages/dominio/src/constantes.ts`. Use **exatamente as mesmas strings**.
 
-Fluxo de status do pedido: `Aguardando pagamento → Pago → Entregue na loja → Pronto para retirada → Retirado` (ou `Cancelado`).
+Fluxo de status do pedido: `Aguardando pagamento → Pago → Entregue na loja (produtor) → Pronto para retirada (loja libera) → Retirado (loja confere o código do comprador)` (ou `Cancelado`).
+
+Sprint 2 (detalhes e como publicar em [`SPRINT-2.md`](SPRINT-2.md)): perfil **admin**, lojas com `status` (só `Aprovada` aparece para escolha), capacidade em caixas (cada pedido pago e não retirado ocupa uma; loja lotada some da compra) e recompensa = valor fixo + % de cada pedido retirado.
 
 ## Operações (caso de uso → rota)
 
@@ -53,7 +55,13 @@ Fluxo de status do pedido: `Aguardando pagamento → Pago → Entregue na loja �
 | `pagarPedido` | `POST /orders/:id/pay` | só "Aguardando pagamento" (pagamento hoje é simulado) |
 | `confirmarEntregaNaLoja` | `POST /orders/:id/delivered` | só pedido "Pago"; só o produtor do pedido |
 | `criarProposta` / `aceitarProposta` / `recusarProposta` | `POST /proposals` · `POST /proposals/:id/accept` · `/reject` | não decide duas vezes; aceitar reserva estoque e cria pedido |
-| `salvarLoja` | `PUT /stores/me` | todos os campos obrigatórios |
+| `salvarLoja` | `PUT /stores/me` | nome, endereço, cidade e horário; capacidade inteira ≥ 0; loja nova = Pendente |
+| `excluirProdutos` | `POST /products/delete` | só produtos do próprio produtor |
+| `codigoDeRetirada` | `GET /orders/:id/pickup-code` | só o comprador; só com o pedido na loja |
+| `confirmarRecebimento` / `confirmarRetirada` | `POST /orders/:id/received` · `/picked-up` | só a loja do pedido; código de 6 dígitos |
+| `atualizarPerfil` | `PUT /users/me` | nome e cidade (senha: Supabase Auth, no front) |
+| `avaliarLoja` | `POST /admin/stores/:id/review` | só admin; reprovar/suspender exige motivo |
+| `salvarConfigRecompensa` / `fecharMesRecompensa` | `PUT /admin/reward-settings` · `POST /admin/reward-payouts` | só admin; % entre 0 e 100; mês fecha uma vez |
 | `registrarEntrada` | `POST /stock/entries` | qtd > 0; custo ≥ 0; soma ao estoque |
 | `registrarPerda` | `POST /stock/losses` | qtd > 0 e ≤ estoque; motivo da lista; subtrai do estoque |
 | `registrarDespesa` / `excluirDespesa` | `POST /expenses` · `DELETE /expenses/:id` | descrição; tipo Custo/Investimento; valor > 0 |

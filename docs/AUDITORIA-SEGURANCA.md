@@ -90,7 +90,7 @@ Não há `child_process`, `exec`, `spawn` nem shell no código da aplicação. *
 Não há `eval`, `new Function`, `import()` com caminho variável nem templates executáveis. A configuração vem só de variáveis de ambiente lidas como texto. **Confiança:** Alta.
 
 ## CSRF — **Não detectado**
-A API autentica só pelo cabeçalho `Authorization: Bearer`, sem cookie de sessão, então um site de terceiros não consegue mandar requisições autenticadas em nome do usuário. O CORS (`servidor.ts`) libera uma única origem (`FRONTEND_ORIGIN`). **Confiança:** Alta.
+A API autentica só pelo cabeçalho `Authorization: Bearer`, sem cookie de sessão, então um site de terceiros não consegue mandar requisições autenticadas em nome do usuário. O CORS (`servidor.ts`) libera só as origens listadas em `FRONTEND_ORIGIN` (uma por versão publicada do site; endereço inválido impede a API de subir). **Confiança:** Alta.
 
 ## Programação defensiva e tratamento de erros — **Presente (concorrência)**
 - **Corrida de dados / sem transação.** `executar` em `casosDeUso.ts` carrega o estado inteiro, aplica a regra e grava as diferenças (`repositorioSupabase.ts`, `calcularOperacoes`), sem transação nem trava. Duas compras simultâneas leem o mesmo estoque e gravam por cima uma da outra, o que permite vender acima do estoque (perda de atualização). Os passos de um salvamento também não são atômicos: uma falha no meio deixa o banco pela metade. O número do pedido é calculado na API, e duas compras ao mesmo tempo podem gerar o mesmo número (o `unique` do banco recusa a segunda com erro 500). **Confiança:** Alta (limite já documentado em `docs/BACKEND.md`).

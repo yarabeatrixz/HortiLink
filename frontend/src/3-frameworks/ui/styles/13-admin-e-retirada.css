@@ -1,0 +1,256 @@
+/* Sprint 2: indicador "Salvando…", ponto de coleta com foto, retirada com código,
+   recompensas, administrador e configurações do perfil. */
+
+/* PROD-01: aviso visível enquanto a gravação vai ao servidor. */
+.saving-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 7px 16px;
+  color: var(--green-dark);
+  background: var(--lime);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Ponto de coleta (LOJA-01/02) */
+.store-cover {
+  overflow: hidden;
+}
+.store-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.photo-placeholder {
+  width: 110px;
+  height: 85px;
+  display: grid;
+  place-items: center;
+  color: var(--green);
+  background: var(--green-light);
+  border-radius: 8px;
+}
+.store-status-card h3 {
+  font-size: 16px;
+}
+.store-status-card p {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.review-note {
+  padding: 10px 12px;
+  color: var(--amber) !important;
+  background: var(--amber-light);
+  border-radius: 8px;
+}
+
+/* Retirada com código (US10) */
+.store-order-card {
+  grid-template-columns: auto 1.2fr auto 1fr 1fr auto;
+}
+.store-order-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.pickup-code-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+.pickup-code-form label {
+  display: grid;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.pickup-code-form input {
+  width: 130px;
+  padding: 10px 12px;
+  font-size: 18px;
+  letter-spacing: 4px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.pickup-code {
+  margin-top: 18px;
+  padding: 16px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  background: var(--green-light);
+  border-radius: 12px;
+}
+.pickup-code > span {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  color: white;
+  background: var(--green);
+  border-radius: 10px;
+}
+.pickup-code small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+.pickup-code strong {
+  display: block;
+  color: var(--green-dark);
+  font-size: 28px;
+  letter-spacing: 6px;
+}
+.pickup-code p {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Catálogo: seleção múltipla (PROD-02) */
+.bulk-bar {
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.bulk-bar label,
+.product-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.product-card.selected {
+  outline: 2px solid var(--green);
+}
+.product-select {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 6px 8px;
+  background: white;
+  border-radius: 8px;
+}
+.product-image {
+  position: relative;
+}
+
+/* Administrador: pontos de coleta (US14/US15) */
+.admin-store-list {
+  display: grid;
+  gap: 14px;
+}
+.admin-store-card {
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 110px 1fr minmax(240px, 0.9fr);
+  gap: 16px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+}
+.admin-store-photo {
+  height: 100px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: var(--green);
+  background: var(--green-light);
+  border-radius: 10px;
+}
+.admin-store-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.admin-store-info h3 {
+  margin: 8px 0 4px;
+  font-size: 15px;
+}
+.admin-store-info p {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.admin-store-actions {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+.admin-store-actions > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Recompensas (US16) */
+.reward-rule {
+  margin-bottom: 22px;
+}
+.reward-rule h2,
+.settings-grid h2,
+.reward-detail h2 {
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+.reward-rule > p {
+  margin-bottom: 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.reward-closed {
+  margin: 12px 0;
+  color: var(--green-dark);
+  font-size: 13px;
+  font-weight: 700;
+}
+.reward-closed-tag {
+  padding: 4px 10px;
+  color: var(--green-dark);
+  background: var(--green-light);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.reward-detail {
+  margin-top: 22px;
+}
+
+/* Configurações do perfil (GER-01) */
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 760px) {
+  .admin-store-card,
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+  .store-order-card {
+    grid-template-columns: auto 1fr;
+  }
+}

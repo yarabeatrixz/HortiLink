@@ -59,6 +59,20 @@ export function excluirProduto(estado: Estado, produtoId: string): Resultado {
   };
 }
 
+/** Exclusão em lote (PROD-02): remove os produtos e as ofertas deles de uma vez. */
+export function excluirProdutos(estado: Estado, produtoIds: string[]): Resultado {
+  if (!produtoIds.length) return falha("Selecione ao menos um produto");
+  const ids = new Set(produtoIds);
+  return {
+    ok: true,
+    state: {
+      ...estado,
+      products: estado.products.filter((item) => !ids.has(item.id)),
+      offers: estado.offers.filter((item) => !ids.has(item.productId)),
+    },
+  };
+}
+
 /** Arquivo escolhido como foto do produto: devolve a mensagem de erro, ou null se serve. */
 export function validarArquivoDeFoto(arquivo: { type: string; size: number }): string | null {
   if (!(FORMATOS_FOTO as readonly string[]).includes(arquivo.type)) return "Use uma foto JPG, PNG ou WebP";

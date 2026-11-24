@@ -146,3 +146,59 @@ describe("rotas da API", () => {
     expect(String(resposta.headers["access-control-allow-headers"]).toLowerCase()).toContain("authorization");
   });
 });
+
+describe("rotas da Sprint 2", () => {
+  it("só o admin avalia lojas; loja aprovada passa a aceitar pontos de retirada", async () => {
+    const { app, repositorio, como } = montar();
+    const avaliar = (userId: string, payload: object) =>
+      app.inject({ method: "POST", url: "/admin/stores/loja-3/review", headers: como(userId), payload });
+    expect((await avaliar("user-loja", { status: "Aprovada" })).statusCode).toBe(403);
+    expect((await avaliar("user-admin", { status: "Suspensa" })).statusCode).toBe(422); // sem motivo
+    const pontos = () =>
+      app.inject({ method: "PUT", url: "/producers/me/pickup-stores", headers: como("user-produtor"), payload: { storeIds: ["loja-1", "loja-3"] } });
+    expect((await pontos()).statusCode).toBe(422); // loja-3 pendente
+    expect((await avaliar("user-admin", { status: "Aprovada" })).statusCode).toBe(200);
+    expect((await pontos()).statusCode).toBe(200);
+    expect(repositorio.espiar().stores.find((l) => l.id === "loja-3")?.status).toBe("Aprovada");
+  });
+
+  it("retirada: produtor entrega, loja libera, comprador vê o código e a loja confere", async () => {
+    const { app, repositorio, como } = montar();
+    const post = (url: string, userId: string, payload?: object) =>
+      app.inject({ method: "POST", url, headers: como(userId), ...(payload ? { payload } : {}) });
+    const codigo = () => app.inject({ method: "GET", url: "/orders/pedido-2/pickup-code", headers: como("user-comprador") });
+
+    expect((await codigo()).statusCode).toBe(422); // ainda não chegou à loja
+    expect((await post("/orders/pedido-2/delivered", "user-produtor")).statusCode).toBe(200);
+    expect((await post("/orders/pedido-2/received", "user-comprador")).statusCode).toBe(403);
+    expect((await post("/orders/pedido-2/received", "user-loja")).statusCode).toBe(200);
+    const { code } = (await codigo()).json();
+    expect(code).toMatch(/^\d{6}$/);
+    expect((await post("/orders/pedido-2/picked-up", "user-loja", { code: "000000" })).statusCode).toBe(422);
+    expect((await post("/orders/pedido-2/picked-up", "user-loja", { code })).statusCode).toBe(200);
+    expect(repositorio.espiar().orders.find((o) => o.id === "pedido-2")?.status).toBe("Retirado");
+
+    const fechar = await post("/admin/reward-payouts", "user-admin", { storeId: "loja-1", month: agora.toISOString().slice(0, 7) });
+    expect(fechar.statusCode).toBe(201);
+    expect(fechar.json().payout).toMatchObject({ ordersCount: 1 });
+  });
+
+  it("exclui vários produtos, atualiza o perfil e salva a regra de recompensa", async () => {
+    const { app, repositorio, como } = montar();
+    const excluir = await app.inject({ method: "POST", url: "/products/delete", headers: como("user-produtor"), payload: { ids: ["produto-1", "produto-2"] } });
+    expect(excluir.statusCode).toBe(200);
+    expect(repositorio.espiar().products.some((p) => p.id === "produto-1")).toBe(false);
+    const alheio = await app.inject({ method: "POST", url: "/products/delete", headers: como("user-produtor-2"), payload: { ids: ["produto-3"] } });
+    expect(alheio.statusCode).toBe(403);
+
+    const perfil = await app.inject({ method: "PUT", url: "/users/me", headers: como("user-comprador"), payload: { name: "Marina", city: "Mogi" } });
+    expect(perfil.statusCode).toBe(200);
+    expect(repositorio.espiar().users.find((u) => u.id === "user-comprador")?.city).toBe("Mogi");
+
+    const regra = (userId: string) =>
+      app.inject({ method: "PUT", url: "/admin/reward-settings", headers: como(userId), payload: { fixedAmount: "2", percent: 10 } });
+    expect((await regra("user-loja")).statusCode).toBe(403);
+    expect((await regra("user-admin")).statusCode).toBe(200);
+    expect(repositorio.espiar().rewardSettings).toEqual({ fixedAmount: 2, percent: 10 });
+  });
+});

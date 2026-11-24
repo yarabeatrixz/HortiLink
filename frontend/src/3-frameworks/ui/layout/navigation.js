@@ -1,5 +1,8 @@
 import {
   BadgePercent,
+  Building2,
+  HandCoins,
+  Settings,
   BarChart3,
   Boxes,
   CheckCircle2,
@@ -33,5 +36,13 @@ export const NAV = {
   loja: [
     { id: "ponto", label: "Meu ponto", icon: Store },
     { id: "pedidos", label: "Pedidos", icon: PackageCheck },
+    { id: "recompensas", label: "Recompensas", icon: HandCoins },
+  ],
+  admin: [
+    { id: "lojas", label: "Pontos de coleta", icon: Building2 },
+    { id: "recompensas", label: "Recompensas", icon: HandCoins },
   ],
 };
+
+/** Aba de configurações do perfil, presente em todos os perfis (GER-01). */
+export const ABA_PERFIL = { id: "perfil", label: "Meu perfil", icon: Settings };
