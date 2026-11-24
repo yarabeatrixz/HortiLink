@@ -5,9 +5,16 @@ export const PERFIS = [
   { id: "produtor", nome: "Produtor" },
   { id: "comprador", nome: "Comprador" },
   { id: "loja", nome: "Loja parceira" },
+  { id: "admin", nome: "Administrador" },
 ] as const;
 
 export type Perfil = (typeof PERFIS)[number]["id"];
+
+/**
+ * Perfis que qualquer pessoa pode escolher no cadastro. O administrador NÃO entra:
+ * a conta é promovida no banco pela equipe (supabase/migrations/0004_sprint2_admin.sql).
+ */
+export const PERFIS_CADASTRO = PERFIS.filter((perfil) => perfil.id !== "admin");
 
 export const nomePerfil = (perfil: Perfil): string =>
   PERFIS.find((item) => item.id === perfil)?.nome ?? perfil;
@@ -65,6 +72,16 @@ export const STATUS_PROPOSTA = {
 } as const;
 
 export type StatusProposta = (typeof STATUS_PROPOSTA)[keyof typeof STATUS_PROPOSTA];
+
+/** Situação do ponto de coleta, decidida pelo administrador (US14). */
+export const STATUS_LOJA = {
+  PENDENTE: "Pendente",
+  APROVADA: "Aprovada",
+  REPROVADA: "Reprovada",
+  SUSPENSA: "Suspensa",
+} as const;
+
+export type StatusLoja = (typeof STATUS_LOJA)[keyof typeof STATUS_LOJA];
 
 export const STATUS_PEDIDO = {
   AGUARDANDO_PAGAMENTO: "Aguardando pagamento",

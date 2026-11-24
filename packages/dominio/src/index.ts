@@ -12,6 +12,7 @@ export type { DadosCompra } from "./compra";
 export * from "./pedidos";
 export * from "./propostas";
 export * from "./lojas";
+export * from "./recompensas";
 export * from "./estoque";
 export * from "./despesas";
 export * from "./indicadores";
