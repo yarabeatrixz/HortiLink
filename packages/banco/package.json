@@ -19,7 +19,7 @@
     "@hortilink/dominio": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^22.20.5",
+    "@types/node": "^26.6.6",
     "oxlint": "^1.93.0",
     "typescript": "^6.0.3",
     "vitest": "^5.1.0"
