@@ -12,7 +12,6 @@ import { ProductImage } from "../../components/ProductImage";
 import { useApp } from "../../state/AppProvider";
 import { totalPedido } from "../orderFilters";
 
-const PIX_EXPIRA_EM_SEGUNDOS = 600;
 const PIX_COPIA_E_COLA = "00020126580014BR.GOV.BCB.PIX.HORTILINK";
 const CARTAO_TESTE_RECUSADO = "4000000000000002";
 const METODOS = [
@@ -26,7 +25,7 @@ const mmss = (segundos) =>
 export function Checkout({ id, back, success, declined, initialMethod = METODO_PAGAMENTO.PIX }) {
   const { orders, products, users, stores, payOrder, cancelOrder } = useApp();
   const [method, setMethod] = useState(initialMethod);
-  const [seconds, setSeconds] = useState(PIX_EXPIRA_EM_SEGUNDOS);
+  const [agora, setAgora] = useState(() => Date.now());
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
   const [card, setCard] = useState({
@@ -38,12 +37,25 @@ export function Checkout({ id, back, success, declined, initialMethod = METODO_P
   });
 
   useEffect(() => {
-    if (method !== METODO_PAGAMENTO.PIX || seconds <= 0) return undefined;
-    const timer = setInterval(() => setSeconds((current) => current - 1), 1000);
+    const timer = setInterval(() => setAgora(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, [method, seconds]);
+  }, []);
 
   const order = orders.find((item) => item.id === id);
+  // O cronômetro é o prazo REAL do pedido (o mesmo da API), não um contador à parte.
+  const seconds = order
+    ? Math.max(0, Math.floor((new Date(order.createdAt).getTime() + PRAZO_PAGAMENTO_MINUTOS * 60_000 - agora) / 1000))
+    : 0;
+  if (order?.status === STATUS_PEDIDO.AGUARDANDO_PAGAMENTO && seconds <= 0) {
+    return (
+      <div className="checkout-page">
+        <BackButton onClick={back} />
+        <ErrorMessage>
+          O prazo para pagar este pedido acabou e o estoque voltou para a vitrine. Faça a compra de novo.
+        </ErrorMessage>
+      </div>
+    );
+  }
   if (!order || order.status !== STATUS_PEDIDO.AGUARDANDO_PAGAMENTO) {
     // Pedido sumiu, foi cancelado ou expirou: explica em vez de deixar a tela em branco.
     return (
@@ -156,6 +168,7 @@ export function Checkout({ id, back, success, declined, initialMethod = METODO_P
               </div>
               <Button
                 className="full"
+                locks
                 disabled={seconds <= 0}
                 onClick={() => approve(METODO_PAGAMENTO.PIX)}
               >

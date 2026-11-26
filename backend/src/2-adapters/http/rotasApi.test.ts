@@ -299,3 +299,57 @@ describe("rotas da Sprint 3 (correções da banca)", () => {
     expect(recebido.statusCode).toBe(403);
   });
 });
+
+describe("ajustes da segunda banca", () => {
+  const compra = { type: "offer", sourceId: "oferta-1", productId: "produto-1", quantity: 5, storeId: "loja-1" };
+
+  it("pedido vencido: a expiração é gravada mesmo quando o pagamento é recusado, com mensagem de prazo", async () => {
+    let relogio = new Date("2026-11-15T12:00:00.000Z");
+    const repositorio = criarRepositorioEmMemoria(criarExemplo(relogio));
+    const casos = criarCasosDeUso({ repositorio, relogio: () => relogio });
+    const app = criarServidor({ origemFrontend: ORIGEM }, { casos, verificador: verificadorDemo });
+    const como = (userId: string) => ({ authorization: `Bearer demo:${userId}` });
+    const estoque = () => repositorio.espiar().offers.find((o) => o.id === "oferta-1")?.quantity;
+    const antes = estoque();
+    const { order } = (await app.inject({ method: "POST", url: "/orders", headers: como("user-comprador"), payload: compra })).json();
+    relogio = new Date(relogio.getTime() + 31 * 60_000);
+    const pagar = await app.inject({ method: "POST", url: `/orders/${order.id}/pay`, headers: como("user-comprador"), payload: { method: "Pix" } });
+    expect(pagar.statusCode).toBe(422);
+    expect(pagar.json().error).toMatch(/prazo para pagar/);
+    expect(repositorio.espiar().orders.find((o) => o.id === order.id)?.status).toBe("Cancelado");
+    // Volta o deste pedido e também os 4 do pedido-1 do exemplo, que venceu junto.
+    expect(estoque()).toBe((antes ?? 0) + 4);
+    const cancelar = await app.inject({ method: "POST", url: `/orders/${order.id}/cancel`, headers: como("user-comprador") });
+    expect(cancelar.json().error).toMatch(/prazo para pagar acabou/);
+  });
+
+  it("loja que corrige o endereço volta para análise mas conclui os pedidos que já tinha", async () => {
+    const { app, repositorio, como } = montar();
+    await app.inject({ method: "POST", url: "/orders/pedido-2/delivered", headers: como("user-produtor") });
+    const loja = repositorio.espiar().stores.find((l) => l.id === "loja-1");
+    if (!loja) throw new Error("exemplo sem loja-1");
+    const editar = await app.inject({
+      method: "PUT",
+      url: "/stores/me",
+      headers: como("user-loja"),
+      payload: { name: loja.name, address: "Rua corrigida, 10", city: loja.city, hours: loja.hours },
+    });
+    expect(editar.statusCode).toBe(200);
+    expect(repositorio.espiar().stores.find((l) => l.id === "loja-1")?.status).toBe("Pendente");
+    const recebido = await app.inject({ method: "POST", url: "/orders/pedido-2/received", headers: como("user-loja") });
+    expect(recebido.statusCode).toBe(200);
+  });
+
+  it("o produtor não entrega pedido em loja suspensa", async () => {
+    const { app, como } = montar();
+    await app.inject({
+      method: "POST",
+      url: "/admin/stores/loja-1/review",
+      headers: como("user-admin"),
+      payload: { status: "Suspensa", note: "Fiscalização" },
+    });
+    const entregar = await app.inject({ method: "POST", url: "/orders/pedido-2/delivered", headers: como("user-produtor") });
+    expect(entregar.statusCode).toBe(422);
+    expect(entregar.json().error).toMatch(/suspenso/);
+  });
+});
