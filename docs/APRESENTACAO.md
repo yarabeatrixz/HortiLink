@@ -30,12 +30,13 @@ Rodar `pnpm --filter hortilink-frontend dev:demo` antes da aula (não precisa do
 ## Slide 5 — Segurança (2 min)
 **Dizer:**
 - "O navegador **só lê** o banco, e o Supabase filtra cada linha com RLS. Quem grava é a API, que confere o login, o perfil e se a pessoa é dona do que está mudando."
-- "Fiz uma **auditoria** seguindo o OWASP Top 10 e as checagens de segurança do Supabase, corrigi o que encontrei e conferi no banco real: 11 tabelas com RLS forçado e zero acesso anônimo."
+- "Fiz uma **auditoria** seguindo o OWASP Top 10 e as checagens de segurança do Supabase e corrigi o que encontrei. Na Sprint 3, uma **banca de revisão** apontou mais 26 itens; corrigimos os bloqueadores, como o preço manipulável e a venda em dobro, cada um com um teste automático (`docs/SPRINT-3.md`)."
+- "O **pagamento é simulado** por decisão da equipe: por isso a recompensa das lojas aparece como valor demonstrativo."
 - "As chaves secretas ficam só no servidor; o front se recusa a abrir se alguém colocar a chave secreta nele."
 **Mostrar:** a tabela de `docs/OWASP-TOP10.md`.
 
 ## Slide 6 — Qualidade (1 min)
-- Mais de 140 testes automáticos (domínio 44, banco 8, API 40, front 50), rodando no CI a cada PR.
+- 190 testes automáticos (domínio 69, banco 10, API 52, front 59), rodando no CI a cada PR.
 - Testes de usabilidade (Nielsen) no desktop e no celular, com acessibilidade pelo teclado: `docs/TESTES-USABILIDADE.md`.
 - Fluxo de trabalho com branches, PRs, Conventional Commits e Dependabot.
 
