@@ -32,3 +32,18 @@ describe("Sprint 3: correções da banca", () => {
     expect(screen.queryByText(/Pagamento pendente/)).not.toBeInTheDocument();
   });
 });
+
+describe("Sprint 3: mostrar senha", () => {
+  it("o botão do olho mostra e oculta a senha digitada no login", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const senha = await screen.findByLabelText("Senha");
+    await user.type(senha, "123456");
+    expect(senha).toHaveAttribute("type", "password");
+    await user.click(screen.getByRole("button", { name: "Mostrar senha" }));
+    expect(senha).toHaveAttribute("type", "text");
+    expect(senha).toHaveValue("123456");
+    await user.click(screen.getByRole("button", { name: "Ocultar senha" }));
+    expect(senha).toHaveAttribute("type", "password");
+  });
+});

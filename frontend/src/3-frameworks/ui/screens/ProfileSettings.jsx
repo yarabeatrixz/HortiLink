@@ -4,6 +4,7 @@ import { SENHA_MINIMA, nomePerfil } from "@hortilink/dominio";
 import { Button } from "../components/base/Button";
 import { ErrorMessage } from "../components/base/ErrorMessage";
 import { Field } from "../components/base/Field";
+import { PasswordField } from "../components/base/PasswordField";
 import { PageTitle } from "../components/base/PageTitle";
 import { SuccessMessage } from "../components/base/SuccessMessage";
 import { useApp } from "../state/AppProvider";
@@ -68,17 +69,15 @@ export function ProfileSettings() {
 
         <form className="form-card" onSubmit={troca.submit}>
           <h2>Trocar senha</h2>
-          <Field
+          <PasswordField
             label="Nova senha"
-            type="password"
             autoComplete="new-password"
             value={senha.nova}
             onChange={(event) => setSenha({ ...senha, nova: event.target.value })}
             placeholder={`Mínimo de ${SENHA_MINIMA} caracteres`}
           />
-          <Field
+          <PasswordField
             label="Confirmar nova senha"
-            type="password"
             autoComplete="new-password"
             value={senha.confirmacao}
             onChange={(event) => setSenha({ ...senha, confirmacao: event.target.value })}
