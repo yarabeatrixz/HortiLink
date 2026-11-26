@@ -2,6 +2,7 @@
 
 import { MOTIVOS_PERDA, type MotivoPerda, STATUS_ESTOQUE, type StatusEstoque, TIPO_MOVIMENTO } from "./constantes";
 import { num } from "./formatacao";
+import { PRECO_MAXIMO, QUANTIDADE_MAXIMA } from "./produtos";
 import type { Estado, MovimentoEstoque, Numerico, Produto, Resultado } from "./tipos";
 import { falha, novoId, substituir, texto } from "./util";
 
@@ -54,6 +55,8 @@ export function registrarEntrada(estado: Estado, dados: DadosEntrada, agora: Dat
   const custoUnitario = num(dados.unitCost);
   if (quantidade <= 0) return falha("Informe uma quantidade válida");
   if (custoUnitario < 0) return falha("O custo não pode ser negativo");
+  if (produto.quantity + quantidade > QUANTIDADE_MAXIMA || custoUnitario > PRECO_MAXIMO)
+    return falha("Quantidade ou custo acima do permitido. Confira os valores.");
   return movimentar(
     estado,
     produto,

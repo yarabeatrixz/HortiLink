@@ -37,9 +37,25 @@ describe("produtos", () => {
   });
 
   it("excluir produto remove as ofertas dele", () => {
-    const { state } = sucesso(excluirProduto(criarExemplo(), "produto-1"));
+    const semPedidos = { ...criarExemplo(), orders: [] };
+    const { state } = sucesso(excluirProduto(semPedidos, "produto-1"));
     expect(state.products.some((item) => item.id === "produto-1")).toBe(false);
     expect(state.offers.some((item) => item.productId === "produto-1")).toBe(false);
+  });
+
+  it("não exclui produto que já tem pedido (Sprint 3)", () => {
+    expect(falhaDe(excluirProduto(criarExemplo(), "produto-1"))).toMatch(/já tem pedidos/);
+  });
+
+  it("valida categoria, unidade e limites; editar pode zerar o estoque (Sprint 3)", () => {
+    expect(falhaDe(salvarProduto(criarExemplo(), { ...couve, category: "Bombas" as never }))).toMatch(/categoria/);
+    expect(falhaDe(salvarProduto(criarExemplo(), { ...couve, unit: "xyz" as never }))).toMatch(/unidade/);
+    expect(falhaDe(salvarProduto(criarExemplo(), { ...couve, price: 1e15 }))).toMatch(/acima do permitido/);
+    const produto = criarExemplo().products[0];
+    if (!produto) throw new Error("exemplo sem produto");
+    const zerado = sucesso(salvarProduto(criarExemplo(), { ...produto, quantity: 0 }));
+    expect(zerado.state.products.find((item) => item.id === produto.id)?.quantity).toBe(0);
+    expect(falhaDe(salvarProduto(criarExemplo(), { ...couve, quantity: 0 }))).toMatch(/valores válidos/);
   });
 });
 

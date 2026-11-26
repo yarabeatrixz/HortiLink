@@ -84,6 +84,8 @@ export function fecharMesRecompensa(
   if (!estado.stores.some((loja) => loja.id === storeId)) return falha("Ponto de coleta não encontrado");
   if (!MES_VALIDO.test(month)) return falha("Mês inválido");
   if (month > mesAtual(agora)) return falha("Não dá para fechar um mês que ainda não começou");
+  // O mês em curso ainda recebe retiradas: fechar agora deixaria o extrato errado.
+  if (month === mesAtual(agora)) return falha("Só dá para fechar o mês depois que ele terminar");
   const extrato = extratoDaLoja(estado, storeId, month);
   if (extrato.fechamento) return falha("Este mês já foi fechado para esta loja");
   if (!extrato.ordersCount) return falha("Nenhum pedido retirado neste mês");

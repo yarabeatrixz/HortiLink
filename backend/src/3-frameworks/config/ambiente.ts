@@ -23,6 +23,8 @@ export interface Ambiente {
   supabase: ConfigSupabase | null;
   /** Segredo do código de retirada; sem CODIGO_RETIRADA_SEGREDO usa a chave secreta do Supabase. */
   segredoRetirada: string | undefined;
+  /** Quantos proxies confiar no X-Forwarded-For (TRUST_PROXY; no Render, 1). false = nenhum. */
+  proxiesConfiaveis: number | false;
 }
 
 const ORIGEM_PADRAO = "http://localhost:5173";
@@ -76,5 +78,15 @@ export function lerAmbiente(variaveis: Record<string, string | undefined> = proc
     modo: supabase ? "supabase" : "demo",
     supabase,
     segredoRetirada: variaveis.CODIGO_RETIRADA_SEGREDO?.trim() || supabase?.chaveServiceRole,
+    proxiesConfiaveis: lerProxies(variaveis.TRUST_PROXY),
   };
+}
+
+function lerProxies(valor: string | undefined): number | false {
+  if (!valor?.trim()) return false;
+  const quantidade = Number(valor);
+  if (!Number.isInteger(quantidade) || quantidade < 0 || quantidade > 5) {
+    throw new Error(`TRUST_PROXY inválido: "${valor}". Use o número de proxies na frente da API (no Render, 1).`);
+  }
+  return quantidade || false;
 }

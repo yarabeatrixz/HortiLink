@@ -1,6 +1,6 @@
 // Cadastro, autenticação (modo demonstração) e pontos de retirada do produtor.
 
-import { PERFIS_CADASTRO, type Perfil, SENHA_MINIMA } from "./constantes";
+import { nomePerfil, PERFIS_CADASTRO, type Perfil, SENHA_MINIMA } from "./constantes";
 import type { Estado, Resultado, Usuario } from "./tipos";
 import { falha, novoId, substituir, texto } from "./util";
 
@@ -29,7 +29,7 @@ export function validarCadastro(usuarios: Usuario[], dados: DadosCadastro): Resu
   if (usuarios.some((usuario) => emailNormalizado(usuario.email) === email)) {
     return falha("Este e-mail já está cadastrado");
   }
-  if (dados.password.length < SENHA_MINIMA) {
+  if (dados.password.trim().length < SENHA_MINIMA) {
     return falha(`A senha precisa ter pelo menos ${SENHA_MINIMA} caracteres`);
   }
   return { ok: true };
@@ -37,16 +37,26 @@ export function validarCadastro(usuarios: Usuario[], dados: DadosCadastro): Resu
 
 /** Só para o modo demonstração: a senha é comparada em texto puro. */
 export function autenticar(usuarios: Usuario[], credenciais: Credenciais): Usuario | null {
+  const usuario = contaComSenha(usuarios, credenciais);
+  return usuario?.role === credenciais.role ? usuario : null;
+}
+
+/** Conta com este e-mail e senha, qualquer que seja o perfil (modo demonstração). */
+export function contaComSenha(usuarios: Usuario[], credenciais: Omit<Credenciais, "role">): Usuario | null {
   const email = emailNormalizado(credenciais.email);
   return (
     usuarios.find(
-      (usuario) =>
-        emailNormalizado(usuario.email) === email &&
-        usuario.password === credenciais.password &&
-        usuario.role === credenciais.role,
+      (usuario) => emailNormalizado(usuario.email) === email && usuario.password === credenciais.password,
     ) ?? null
   );
 }
+
+/**
+ * E-mail e senha certos, perfil errado: dizer qual é o perfil, em vez de
+ * "senha incorreta" (achado 11 da banca da Sprint 3).
+ */
+export const mensagemPerfilErrado = (perfilDaConta: Perfil): string =>
+  `Esta conta é de ${nomePerfil(perfilDaConta)}. Selecione o perfil "${nomePerfil(perfilDaConta)}" para entrar.`;
 
 export function cadastrarUsuario(estado: Estado, dados: DadosCadastro): Resultado<{ user: Usuario }> {
   const validacao = validarCadastro(estado.users, dados);
@@ -98,7 +108,7 @@ export function atualizarPerfil(estado: Estado, userId: string, dados: DadosPerf
 
 /** Validação da nova senha (a troca em si é do Supabase Auth; no modo demo, do estado). */
 export const validarNovaSenha = (senha: string, confirmacao: string): string | null => {
-  if (!senha || senha.length < SENHA_MINIMA) return `A senha precisa ter pelo menos ${SENHA_MINIMA} caracteres`;
+  if (!senha || senha.trim().length < SENHA_MINIMA) return `A senha precisa ter pelo menos ${SENHA_MINIMA} caracteres`;
   if (senha !== confirmacao) return "As senhas não conferem";
   return null;
 };

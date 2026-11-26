@@ -5,6 +5,8 @@
 import {
   atualizarPerfil,
   avaliarLoja,
+  cancelarPedido,
+  expirarPedidosVencidos,
   codigoDeRetirada,
   confirmarEntregaNaLoja,
   confirmarRecebimentoNaLoja,
@@ -60,6 +62,9 @@ export interface Dependencias {
 }
 
 export const SEGREDO_RETIRADA_DEMO = "hortilink-demo";
+/** Código de retirada: erros seguidos permitidos por pedido e tempo de bloqueio. */
+export const TENTATIVAS_CODIGO = 5;
+export const BLOQUEIO_CODIGO_MS = 15 * 60_000;
 
 export function criarCasosDeUso({
   repositorio,
@@ -67,20 +72,56 @@ export function criarCasosDeUso({
   segredoRetirada = SEGREDO_RETIRADA_DEMO,
 }: Dependencias) {
   /**
+   * Fila de gravação (Sprint 3, achado 2 da banca): uma escrita por vez nesta
+   * instância da API. Sem ela, duas compras simultâneas liam o mesmo estoque e o
+   * mesmo número de pedido e as duas "vendiam". A API roda em UMA instância no
+   * Render; com várias instâncias seria preciso uma trava no banco (docs/SPRINT-3.md).
+   */
+  let fila: Promise<unknown> = Promise.resolve();
+  function emFila<T>(tarefa: () => Promise<T>): Promise<T> {
+    const vez = fila.then(tarefa, tarefa);
+    fila = vez.catch(() => undefined);
+    return vez;
+  }
+
+  /**
    * Carrega o estado, identifica o usuário, roda `regra` e grava o resultado.
    * `regra` pode lançar erros de autorização antes de chamar o domínio.
+   * Antes da regra, pedidos não pagos no prazo são cancelados e o estoque volta.
    */
-  async function executar<E extends object>(
+  function executar<E extends object>(
     userId: string,
     regra: (estado: Estado, usuario: Usuario, agora: Date) => Resultado<E>,
   ): Promise<Sucesso<E>> {
-    const antes = await repositorio.carregar();
-    const usuario = antes.users.find((item) => item.id === userId);
-    if (!usuario) throw naoAutenticado();
-    const resultado = regra(antes, usuario, relogio());
-    if (!resultado.ok) throw violouRegra(resultado.error);
-    await repositorio.salvar(antes, resultado.state);
-    return resultado as Sucesso<E>;
+    return emFila(async () => {
+      const antes = await repositorio.carregar();
+      const usuario = antes.users.find((item) => item.id === userId);
+      if (!usuario) throw naoAutenticado();
+      const agora = relogio();
+      const resultado = regra(expirarPedidosVencidos(antes, agora), usuario, agora);
+      if (!resultado.ok) throw violouRegra(resultado.error);
+      await repositorio.salvar(antes, resultado.state);
+      return resultado as Sucesso<E>;
+    });
+  }
+
+  /**
+   * Erros do código de retirada por pedido (achado 7 da banca): depois de
+   * TENTATIVAS_CODIGO erros seguidos o pedido fica bloqueado por BLOQUEIO_CODIGO_MS.
+   */
+  const errosDoCodigo = new Map<string, { erros: number; bloqueadoAte: number }>();
+  function conferirBloqueio(pedidoId: string, agora: Date) {
+    if ((errosDoCodigo.get(pedidoId)?.bloqueadoAte ?? 0) > agora.getTime())
+      throw violouRegra("Muitos códigos errados para este pedido. Aguarde 15 minutos e confira com o comprador.");
+  }
+  function registrarErroDoCodigo(pedidoId: string, agora: Date) {
+    const erros = (errosDoCodigo.get(pedidoId)?.erros ?? 0) + 1;
+    errosDoCodigo.set(
+      pedidoId,
+      erros >= TENTATIVAS_CODIGO
+        ? { erros: 0, bloqueadoAte: agora.getTime() + BLOQUEIO_CODIGO_MS }
+        : { erros, bloqueadoAte: 0 },
+    );
   }
 
   const exigirPerfil = (usuario: Usuario, perfil: Perfil) => {
@@ -122,6 +163,10 @@ export function criarCasosDeUso({
     const pedido = estado.orders.find((item) => item.id === pedidoId);
     if (!pedido) throw naoEncontrado("Pedido não encontrado");
     if (pedido.storeId !== loja.id) throw proibido("Este pedido não é retirado no seu ponto");
+    // Loja suspensa ou em análise não movimenta pedidos (achado 14 da banca).
+    if (!lojaAprovada(loja))
+      throw proibido("Seu ponto não está aprovado no momento. Fale com a HortiLink sobre os pedidos.");
+    return pedido;
   };
 
   return {
@@ -210,7 +255,18 @@ export function criarCasosDeUso({
         return criarPedidoDireto(estado, { ...dados, buyerId: usuario.id }, agora);
       }),
 
-    /** Pagamento SIMULADO (modo demonstração); provedor real fica para a fase 5. */
+    /** O comprador desiste antes de pagar: o estoque volta (Sprint 3). */
+    cancelarPedido: (userId: string, pedidoId: string) =>
+      executar(userId, (estado, usuario, agora) => {
+        exigirPerfil(usuario, "comprador");
+        doUsuario(estado.orders, pedidoId, (o) => o.buyerId, usuario, "Pedido");
+        return cancelarPedido(estado, pedidoId, agora);
+      }),
+
+    /**
+     * Pagamento SIMULADO: decisão da equipe para o TCC (sem provedor real).
+     * Por isso a recompensa das lojas é só demonstrativa (docs/SPRINT-3.md).
+     */
     pagarPedido: (userId: string, pedidoId: string, metodo: MetodoPagamento) =>
       executar(userId, (estado, usuario, agora) => {
         exigirPerfil(usuario, "comprador");
@@ -244,7 +300,14 @@ export function criarCasosDeUso({
 
     confirmarRetirada: (userId: string, pedidoId: string, codigo: string) =>
       executar(userId, (estado, usuario, agora) => {
-        exigirPedidoDaMinhaLoja(estado, usuario, pedidoId);
+        const pedido = exigirPedidoDaMinhaLoja(estado, usuario, pedidoId);
+        conferirBloqueio(pedidoId, agora);
+        const digitado = String(codigo ?? "").replace(/\D/g, "");
+        if (pedidoNaLoja(pedido) && digitado !== codigoDeRetirada(pedidoId, segredoRetirada)) {
+          registrarErroDoCodigo(pedidoId, agora);
+          throw violouRegra("Código de retirada incorreto. Confira com o comprador.");
+        }
+        errosDoCodigo.delete(pedidoId);
         return confirmarRetirada(estado, pedidoId, codigo, segredoRetirada, agora);
       }),
 

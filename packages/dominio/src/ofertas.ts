@@ -14,6 +14,9 @@ export interface DadosOferta {
   storeIds: string[];
 }
 
+/** Uma oferta dura no máximo 90 dias. */
+export const VALIDADE_MAXIMA_DIAS = 90;
+
 export function statusOferta(oferta: Oferta, agora: Date = new Date()): StatusOferta {
   if (oferta.endedAt) return STATUS_OFERTA.ENCERRADA;
   if (oferta.quantity <= 0) return STATUS_OFERTA.ESGOTADA;
@@ -34,9 +37,20 @@ export function criarOferta(estado: Estado, dados: DadosOferta, agora: Date = ne
   if (preco <= 0) return falha("Informe um preço promocional válido");
   if (preco >= produto.price) return falha("O preço promocional deve ser menor que o preço normal");
   if (!texto(dados.city)) return falha("Informe a cidade");
-  if (num(dados.validityDays) <= 0) return falha("Informe a validade em dias");
+  const validade = num(dados.validityDays);
+  if (!Number.isInteger(validade) || validade <= 0 || validade > VALIDADE_MAXIMA_DIAS)
+    return falha(`Informe a validade em dias (1 a ${VALIDADE_MAXIMA_DIAS})`);
   if (!dados.storeIds.length) return falha("Selecione ao menos um ponto de retirada");
-  if (quantidade > produto.quantity) return falha("A quantidade da oferta supera o estoque do produto");
+  // Ofertas ativas do mesmo produto somadas não podem passar do estoque.
+  const jaEmOferta = estado.offers
+    .filter((item) => item.productId === produto.id && ofertaAtiva(item, agora))
+    .reduce((soma, item) => soma + item.quantity, 0);
+  if (quantidade + jaEmOferta > produto.quantity)
+    return falha(
+      jaEmOferta > 0
+        ? "A quantidade da oferta, somada às outras ofertas ativas deste produto, supera o estoque"
+        : "A quantidade da oferta supera o estoque do produto",
+    );
 
   const oferta: Oferta = {
     id: novoId(),

@@ -5,6 +5,7 @@ import { EmptyState } from "../../components/base/EmptyState";
 import { Field } from "../../components/base/Field";
 import { PageTitle } from "../../components/base/PageTitle";
 import { RewardStatement } from "../../components/RewardStatement";
+import { SimulatedRewardNotice } from "../../components/SimulatedRewardNotice";
 import { useApp } from "../../state/AppProvider";
 
 /** Extrato da loja: quanto ela recebe pelos pedidos retirados no ponto (US16). */
@@ -21,6 +22,7 @@ export function StoreRewards() {
         title="Minhas recompensas"
         description={`Você recebe ${brl(fixedAmount)} + ${String(percent).replace(".", ",")}% do valor de cada pedido retirado no seu ponto.`}
       />
+      <SimulatedRewardNotice />
       {store ? (
         <>
           <div className="catalog-tools">

@@ -1,6 +1,8 @@
 // Adapter da porta `AutenticacaoPort` sobre o Supabase Auth. O cadastro manda
 // perfil, nome e cidade nos metadados; o gatilho da migration cria o `users`.
 
+import { mensagemPerfilErrado } from "@hortilink/dominio";
+
 const ERRO_LOGIN = "E-mail ou senha incorretos";
 const ERRO_CADASTRO = "Não foi possível cadastrar agora. Tente de novo.";
 const CONFIRMAR_EMAIL = "Cadastro feito! Confirme pelo link enviado ao seu e-mail e depois entre.";
@@ -15,23 +17,25 @@ const mensagemDeCadastro = (erro) =>
 export function criarSupabaseAutenticacao(cliente) {
   const sessaoAtual = async () => (await cliente.auth.getSession()).data.session;
 
-  /** O perfil escolhido na tela precisa ser o do cadastro (igual ao modo demo). */
-  async function perfilConfere(userId, role) {
+  /** Perfil gravado no cadastro (null se não deu para ler). */
+  async function perfilDaConta(userId) {
     const { data, error } = await cliente
       .from("users")
       .select("role")
       .eq("id", userId)
       .single();
-    return !error && data?.role === role;
+    return error ? null : (data?.role ?? null);
   }
 
   return {
     async entrar({ email, password, role }) {
       const { data, error } = await cliente.auth.signInWithPassword({ email, password });
       if (error || !data.user) throw new Error(ERRO_LOGIN);
-      if (!(await perfilConfere(data.user.id, role))) {
+      // O perfil escolhido na tela precisa ser o do cadastro (igual ao modo demo).
+      const perfil = await perfilDaConta(data.user.id);
+      if (perfil !== role) {
         await cliente.auth.signOut();
-        throw new Error(ERRO_LOGIN);
+        throw new Error(perfil ? mensagemPerfilErrado(perfil) : ERRO_LOGIN);
       }
       return data.user.id;
     },

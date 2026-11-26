@@ -13,6 +13,12 @@ describe("gerarSeedSql", () => {
     expect(sql).not.toMatch(/"password"/);
   });
 
+  it("não cria administrador e recusa rodar em banco com contas reais (Sprint 3)", () => {
+    expect(sql).not.toContain("admin@hortilink.com");
+    expect(sql).not.toMatch(/set role = 'admin'/);
+    expect(sql).toMatch(/raise exception 'seed\.sql é só para um banco de DEMONSTRAÇÃO/);
+  });
+
   it("cria um usuário loja para lojas do exemplo sem dono cadastrado", () => {
     expect(sql).toContain("'loja-demo-2@hortilink.com'");
   });

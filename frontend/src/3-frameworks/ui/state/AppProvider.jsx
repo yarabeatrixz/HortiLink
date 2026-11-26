@@ -6,6 +6,9 @@ import { SalvandoContext } from "./Salvando";
 
 const AppContext = createContext(null);
 
+/** De quanto em quanto tempo a tela relê os dados (pedidos novos, status). */
+const INTERVALO_ATUALIZACAO_MS = 20_000;
+
 export function AppProvider({ casosDeUso, children }) {
   const [data, setData] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -22,6 +25,34 @@ export function AppProvider({ casosDeUso, children }) {
       })
       .catch(() => setLoadError("Não foi possível carregar os dados. Recarregue a página."));
   }, [casosDeUso]);
+
+  /**
+   * Atualização automática (Sprint 3, achado 12 da banca): a loja vê o pedido chegar
+   * e o comprador vê "Pronto para retirada" sem apertar F5. Relê a cada
+   * INTERVALO_ATUALIZACAO_MS e ao voltar para a aba; nunca durante uma gravação.
+   */
+  useEffect(() => {
+    if (!currentUserId) return undefined;
+    let ativo = true;
+    const atualizar = () => {
+      if (emAndamento.current || document.visibilityState === "hidden") return;
+      casosDeUso
+        .carregarEstado()
+        .then((estado) => {
+          if (ativo && !emAndamento.current) setData(estado);
+        })
+        .catch(() => {
+          /* sem rede: tenta de novo no próximo ciclo */
+        });
+    };
+    const intervalo = setInterval(atualizar, INTERVALO_ATUALIZACAO_MS);
+    document.addEventListener("visibilitychange", atualizar);
+    return () => {
+      ativo = false;
+      clearInterval(intervalo);
+      document.removeEventListener("visibilitychange", atualizar);
+    };
+  }, [casosDeUso, currentUserId]);
 
   const value = useMemo(() => {
     if (!data) return null;
@@ -74,6 +105,7 @@ export function AppProvider({ casosDeUso, children }) {
 
       addOrder: async (dados) => (await aplicar(casosDeUso.criarPedido, dados)).order,
       payOrder: (id, metodo) => aplicar(casosDeUso.pagarPedido, id, metodo),
+      cancelOrder: (id) => aplicar(casosDeUso.cancelarPedido, id),
       confirmOrderDelivered: (id) => aplicar(casosDeUso.confirmarEntregaNaLoja, id),
       getPickupCode: (id) => casosDeUso.codigoDeRetirada(id),
 

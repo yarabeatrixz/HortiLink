@@ -73,6 +73,7 @@ export function criarCasosDeUsoRemotos({ leitura, autenticacao, escrita }) {
 
     criarPedido: (dados) => escrever(() => escrita.criarPedido(dados)),
     pagarPedido: (id, metodo) => escrever(() => escrita.pagarPedido(id, metodo)),
+    cancelarPedido: (id) => escrever(() => escrita.cancelarPedido(id)),
     confirmarEntregaNaLoja: (id) => escrever(() => escrita.confirmarEntregaNaLoja(id)),
 
     criarProposta: propostaIndisponivel,

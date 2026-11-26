@@ -83,6 +83,7 @@ export function criarApiEscrita({ urlBase, obterToken, fetch = globalThis.fetch 
     },
     pagarPedido: (pedidoId, metodo) =>
       semRetorno("POST", `/orders/${id(pedidoId)}/pay`, { method: metodo }),
+    cancelarPedido: (pedidoId) => semRetorno("POST", `/orders/${id(pedidoId)}/cancel`),
     confirmarEntregaNaLoja: (pedidoId) =>
       semRetorno("POST", `/orders/${id(pedidoId)}/delivered`),
 

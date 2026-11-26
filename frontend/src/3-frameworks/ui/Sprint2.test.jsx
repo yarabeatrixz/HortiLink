@@ -40,14 +40,25 @@ describe("Sprint 2: relatório de inconsistências", () => {
     const user = userEvent.setup();
     render(<App />);
     await entrar(user, "Produtor", "produtor@hortilink.com");
-    await user.click(await screen.findByRole("checkbox", { name: "Selecionar Alface crespa" }));
-    await user.click(screen.getByRole("checkbox", { name: "Selecionar Cenoura" }));
+    await user.click(await screen.findByRole("checkbox", { name: "Selecionar Cenoura" }));
+    await user.click(screen.getByRole("checkbox", { name: "Selecionar Cheiro-verde" }));
     await user.click(screen.getByRole("button", { name: "Excluir selecionados (2)" }));
     const dialogo = screen.getByRole("dialog");
     await user.click(within(dialogo).getByRole("button", { name: "Excluir" }));
-    expect(await screen.findByRole("heading", { name: "Cheiro-verde" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Alface crespa" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Alface crespa" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Cheiro-verde" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Cenoura" })).not.toBeInTheDocument();
+  });
+
+  it("Sprint 3: produto com pedido não é excluído e a mensagem explica o motivo", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await entrar(user, "Produtor", "produtor@hortilink.com");
+    await user.click(await screen.findByRole("checkbox", { name: "Selecionar Alface crespa" }));
+    await user.click(screen.getByRole("button", { name: "Excluir selecionados (1)" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Excluir" }));
+    expect(await screen.findByText(/já tem pedidos/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Alface crespa" })).toBeInTheDocument();
   });
 
   it("LOJA-02: depois de salvar, a loja vê o ponto cadastrado e não o formulário vazio", async () => {

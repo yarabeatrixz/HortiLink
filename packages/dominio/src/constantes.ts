@@ -12,7 +12,7 @@ export type Perfil = (typeof PERFIS)[number]["id"];
 
 /**
  * Perfis que qualquer pessoa pode escolher no cadastro. O administrador NÃO entra:
- * a conta é promovida no banco pela equipe (supabase/migrations/0004_sprint2_admin.sql).
+ * a conta é promovida no banco pela equipe (passo 2 de docs/SPRINT-2.md).
  */
 export const PERFIS_CADASTRO = PERFIS.filter((perfil) => perfil.id !== "admin");
 
@@ -102,7 +102,12 @@ export const EVENTO_PEDIDO = {
   ENTREGUE_NA_LOJA: "Produto entregue na loja",
   PRONTO_PARA_RETIRADA: "Pronto para retirada",
   RETIRADO: "Retirado",
+  CANCELADO: "Pedido cancelado",
+  EXPIRADO: "Pagamento não feito no prazo",
 } as const;
+
+/** Pedido não pago depois deste prazo é cancelado e o estoque volta (Sprint 3). */
+export const PRAZO_PAGAMENTO_MINUTOS = 30;
 
 export type EventoPedido = (typeof EVENTO_PEDIDO)[keyof typeof EVENTO_PEDIDO];
 

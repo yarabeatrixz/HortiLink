@@ -42,18 +42,32 @@ function usuariosComDonosDeLoja(estado: Estado): Usuario[] {
   return [...estado.users, ...donosFaltando];
 }
 
+/**
+ * Aborta se o banco já tem contas reais (e-mail fora de @hortilink.com): o seed é só
+ * para um banco de demonstração vazio, nunca para o oficial (achado 6 da banca).
+ */
+const TRAVA_BANCO_REAL = `do $$
+begin
+  if exists (select 1 from auth.users where email not like '%@hortilink.com') then
+    raise exception 'seed.sql é só para um banco de DEMONSTRAÇÃO vazio. Este banco já tem contas reais: não rode o seed aqui.';
+  end if;
+end $$;
+`;
+
 export function gerarSeedSql(estado: Estado, referencia: Date): string {
-  const usuarios = usuariosComDonosDeLoja(estado);
-  // O banco recusa criar admin pelo cadastro (migration 0004): entra como comprador e é promovido no fim.
-  const perfilNoCadastro = (u: Usuario) => (u.role === "admin" ? "comprador" : u.role);
-  const metadados = (u: Usuario) =>
-    texto(JSON.stringify({ role: perfilNoCadastro(u), name: u.name, city: u.city }));
-  const admins = usuarios.filter((u) => u.role === "admin");
+  // Sem administrador no seed (Sprint 3): uma conta admin com senha pública no
+  // repositório daria controle total a quem lesse o código. O admin é criado à mão
+  // (passo 2 de docs/SPRINT-2.md), com senha própria.
+  const usuarios = usuariosComDonosDeLoja(estado).filter((u) => u.role !== "admin");
+  const metadados = (u: Usuario) => texto(JSON.stringify({ role: u.role, name: u.name, city: u.city }));
 
   const partes = [
     "-- Gerado por `pnpm --filter @hortilink/backend gerar:seed` a partir de criarExemplo().",
     "-- Dados FICTÍCIOS (senha de todos: 123456). Não editar à mão.",
+    "-- Só para banco de DEMONSTRAÇÃO vazio: a trava abaixo recusa rodar no banco oficial.",
+    "-- Não cria administrador (veja docs/SPRINT-2.md, passo 2).",
     "",
+    TRAVA_BANCO_REAL,
     insert(
       "auth.users",
       ["instance_id", "id", "aud", "role", "email", "encrypted_password", "email_confirmed_at", "raw_app_meta_data", "raw_user_meta_data", "created_at", "updated_at",
@@ -157,9 +171,6 @@ export function gerarSeedSql(estado: Estado, referencia: Date): string {
         uuid(d.id), uuid(d.producerId), texto(d.type), texto(d.description), String(d.amount), quando(d.createdAt, referencia),
       ]),
     ),
-    admins.length
-      ? `update public.users set role = 'admin' where id in (${admins.map((u) => uuid(u.id)).join(", ")});\n`
-      : "",
     `select setval('public.order_number_seq', ${Math.max(estado.nextOrderNumber - 1, 1)});\n`,
   ];
   return partes.filter(Boolean).join("\n");

@@ -59,7 +59,10 @@ describe("ambiente", () => {
       origemFrontend: ORIGEM,
       modo: "demo",
       supabase: null,
+      proxiesConfiaveis: false,
     });
+    expect(lerAmbiente({ TRUST_PROXY: "1" }).proxiesConfiaveis).toBe(1);
+    expect(() => lerAmbiente({ TRUST_PROXY: "sim" })).toThrow(/TRUST_PROXY/);
   });
 
   it("FRONTEND_ORIGIN aceita lista separada por vírgula e ignora a barra final", () => {

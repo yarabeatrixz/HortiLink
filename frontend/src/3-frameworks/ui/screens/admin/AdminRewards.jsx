@@ -7,6 +7,7 @@ import { Field } from "../../components/base/Field";
 import { PageTitle } from "../../components/base/PageTitle";
 import { SuccessMessage } from "../../components/base/SuccessMessage";
 import { RewardStatement } from "../../components/RewardStatement";
+import { SimulatedRewardNotice } from "../../components/SimulatedRewardNotice";
 import { useApp } from "../../state/AppProvider";
 
 /** Regra da recompensa (valor fixo + %) definida pelo administrador. */
@@ -90,6 +91,7 @@ export function AdminRewards() {
         title="Recompensa das lojas"
         description="Defina a regra, acompanhe o extrato de cada ponto e feche o mês."
       />
+      <SimulatedRewardNotice />
       <RegraDeRecompensa />
       <div className="section-heading">
         <h2>Extrato de {month}</h2>

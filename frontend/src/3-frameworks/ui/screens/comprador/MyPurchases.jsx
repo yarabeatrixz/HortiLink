@@ -14,7 +14,7 @@ function paymentText(order) {
     return "Pagamento pendente · toque para pagar";
   if (order.paymentMethod)
     return `Pago via ${order.paymentMethod}${order.paidAt ? ` em ${dataCurta(order.paidAt)}` : ""}`;
-  if (order.status === STATUS_PEDIDO.CANCELADO) return "Pagamento não concluído";
+  if (order.status === STATUS_PEDIDO.CANCELADO) return "Cancelado · o estoque voltou para a vitrine";
   return "Pagamento aprovado";
 }
 

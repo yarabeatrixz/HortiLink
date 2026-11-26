@@ -24,6 +24,9 @@ function montarModoConectado({ urlApi, urlSupabase, chaveAnonSupabase }) {
 
 const config = lerConfigRemota(import.meta.env);
 
+/** Modo demonstração (dados fictícios no navegador). As contas de teste só aparecem nele. */
+export const modoDemo = !config;
+
 export const casosDeUso = config
   ? montarModoConectado(config)
   : criarCasosDeUso(criarLocalStorageRepository());
