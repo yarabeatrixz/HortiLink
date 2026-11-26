@@ -2,6 +2,17 @@
 
 Cada sprint é uma versão publicada com link próprio (pedido do professor). O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [3.2.0] — Sprint 3 · 26/11/2026 · ajustes da segunda banca
+
+Site: https://hortilink-sprint3.vercel.app (mesmo link)
+
+### Corrigido
+- "Cancelar pedido" seguido de "Simular pagamento" mostrava "Pagamento aprovado" para um pedido cancelado: uma ação diferente durante uma gravação agora é recusada, e a tela de resultado confere o status do pedido.
+- A atualização automática não traz mais de volta dados anteriores a uma gravação.
+- Loja que corrige o endereço volta para análise, mas continua concluindo os pedidos que já tinha; só loja suspensa ou reprovada fica bloqueada. O produtor não entrega pedido em loja suspensa.
+- Pedido vencido é cancelado no banco mesmo quando a ação seguinte falha, e pagar ou cancelar um pedido vencido mostra a mensagem de prazo.
+- O cronômetro do Pix mostra o prazo real do pedido (30 min), igual ao da API.
+
 ## [3.1.0] — Sprint 3 · 25/11/2026 · mostrar senha
 
 Site: https://hortilink-sprint3.vercel.app (mesmo link da 3.0.0)

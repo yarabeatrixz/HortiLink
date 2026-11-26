@@ -77,10 +77,10 @@ export function pagarPedido(
   agora: Date = new Date(),
 ): Resultado {
   const pedido = estado.orders.find((item) => item.id === pedidoId);
+  if (pedido && expirou(pedido)) return falha(PRAZO_ACABOU);
   if (pedido?.status !== STATUS_PEDIDO.AGUARDANDO_PAGAMENTO)
     return falha("Este pedido não está aguardando pagamento");
-  if (pedidoVencido(pedido, agora))
-    return falha("O prazo para pagar este pedido acabou. Faça a compra de novo.");
+  if (pedidoVencido(pedido, agora)) return falha(PRAZO_ACABOU);
   // A loja pode ter sido suspensa ou lotado entre a compra e o pagamento.
   const loja = estado.stores.find((item) => item.id === pedido.storeId);
   if (!loja || !lojaAprovada(loja))
@@ -100,6 +100,12 @@ export function pagarPedido(
 }
 
 // ---------------------------------------------------------------- Cancelamento e prazo (Sprint 3)
+
+const PRAZO_ACABOU = "O prazo para pagar este pedido acabou e o estoque voltou para a vitrine. Faça a compra de novo.";
+
+/** Cancelado pelo sistema porque o prazo de pagamento passou. */
+const expirou = (pedido: Pedido): boolean =>
+  pedido.status === STATUS_PEDIDO.CANCELADO && pedido.timeline.at(-1)?.label === EVENTO_PEDIDO.EXPIRADO;
 
 /** Pedido aguardando pagamento há mais de PRAZO_PAGAMENTO_MINUTOS. */
 export const pedidoVencido = (pedido: Pick<Pedido, "status" | "createdAt">, agora: Date): boolean =>
@@ -129,6 +135,7 @@ function devolverEstoque(estado: Estado, pedido: Pedido, evento: EventoPedido, m
 /** O comprador desiste antes de pagar: o pedido é cancelado e o estoque volta. */
 export function cancelarPedido(estado: Estado, pedidoId: string, agora: Date = new Date()): Resultado {
   const pedido = estado.orders.find((item) => item.id === pedidoId);
+  if (pedido && expirou(pedido)) return falha("Este pedido já foi cancelado porque o prazo para pagar acabou.");
   if (pedido?.status !== STATUS_PEDIDO.AGUARDANDO_PAGAMENTO)
     return falha("Só pedidos aguardando pagamento podem ser cancelados");
   return { ok: true, state: devolverEstoque(estado, pedido, EVENTO_PEDIDO.CANCELADO, agora.toISOString()) };

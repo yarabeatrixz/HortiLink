@@ -15,6 +15,7 @@ import {
   excluirProdutos,
   fecharMesRecompensa,
   lojaAprovada,
+  lojaBloqueada,
   pedidoNaLoja,
   salvarConfigRecompensa,
   criarOferta,
@@ -98,8 +99,21 @@ export function criarCasosDeUso({
       const usuario = antes.users.find((item) => item.id === userId);
       if (!usuario) throw naoAutenticado();
       const agora = relogio();
-      const resultado = regra(expirarPedidosVencidos(antes, agora), usuario, agora);
-      if (!resultado.ok) throw violouRegra(resultado.error);
+      const vigente = expirarPedidosVencidos(antes, agora);
+      // A expiração é gravada mesmo quando a ação falha: senão o pedido vencido
+      // continuava "Aguardando pagamento" no banco e o estoque seguia preso.
+      const gravarExpiracao = () => (vigente !== antes ? repositorio.salvar(antes, vigente) : undefined);
+      let resultado: Resultado<E>;
+      try {
+        resultado = regra(vigente, usuario, agora);
+      } catch (erro) {
+        await gravarExpiracao();
+        throw erro;
+      }
+      if (!resultado.ok) {
+        await gravarExpiracao();
+        throw violouRegra(resultado.error);
+      }
       await repositorio.salvar(antes, resultado.state);
       return resultado as Sucesso<E>;
     });
@@ -164,9 +178,19 @@ export function criarCasosDeUso({
     if (!pedido) throw naoEncontrado("Pedido não encontrado");
     if (pedido.storeId !== loja.id) throw proibido("Este pedido não é retirado no seu ponto");
     // Loja suspensa ou em análise não movimenta pedidos (achado 14 da banca).
-    if (!lojaAprovada(loja))
-      throw proibido("Seu ponto não está aprovado no momento. Fale com a HortiLink sobre os pedidos.");
+    // Loja suspensa ou reprovada não movimenta pedidos. Loja que voltou para análise
+    // porque corrigiu o endereço continua concluindo os pedidos que já tinha (segunda banca).
+    if (lojaBloqueada(loja))
+      throw proibido("Seu ponto está suspenso no momento. Fale com a HortiLink sobre os pedidos.");
     return pedido;
+  };
+
+  /** O produtor não entrega pedido em loja suspensa ou reprovada. */
+  const exigirLojaDoPedidoAtiva = (estado: Estado, pedidoId: string) => {
+    const pedido = estado.orders.find((item) => item.id === pedidoId);
+    const loja = estado.stores.find((item) => item.id === pedido?.storeId);
+    if (lojaBloqueada(loja))
+      throw violouRegra("O ponto de retirada deste pedido está suspenso. Fale com a HortiLink antes de entregar.");
   };
 
   return {
@@ -218,6 +242,7 @@ export function criarCasosDeUso({
       executar(userId, (estado, usuario, agora) => {
         exigirPerfil(usuario, "produtor");
         doUsuario(estado.orders, pedidoId, (o) => o.producerId, usuario, "Pedido");
+        exigirLojaDoPedidoAtiva(estado, pedidoId);
         return confirmarEntregaNaLoja(estado, pedidoId, agora);
       }),
 

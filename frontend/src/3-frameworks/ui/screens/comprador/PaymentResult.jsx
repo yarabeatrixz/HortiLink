@@ -1,5 +1,5 @@
 import { CheckCircle2, Store, XCircle } from "lucide-react";
-import { brl, dataHora } from "@hortilink/dominio";
+import { STATUS_PEDIDO, brl, dataHora } from "@hortilink/dominio";
 import { Button } from "../../components/base/Button";
 import { useApp } from "../../state/AppProvider";
 import { totalPedido } from "../orderFilters";
@@ -9,6 +9,26 @@ export function PaymentApproved({ id, method, goOrders, goOffers }) {
   const order = orders.find((item) => item.id === id);
   if (!order) return null;
   const store = stores.find((item) => item.id === order.storeId);
+  // Só confirma o que o servidor confirmou (Sprint 3, segunda banca).
+  if (order.status === STATUS_PEDIDO.AGUARDANDO_PAGAMENTO || order.status === STATUS_PEDIDO.CANCELADO) {
+    return (
+      <div className="payment-result" role="alert">
+        <span className="result-icon error">
+          <XCircle size={40} aria-hidden="true" />
+        </span>
+        <h1>Pagamento não confirmado</h1>
+        <strong className="order-number">{order.orderNumber}</strong>
+        <p>
+          {order.status === STATUS_PEDIDO.CANCELADO
+            ? "Este pedido foi cancelado e não foi pago."
+            : "Este pedido ainda está aguardando pagamento."}
+        </p>
+        <div className="result-actions">
+          <Button onClick={goOrders}>Ver meus pedidos</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="payment-result" role="status">

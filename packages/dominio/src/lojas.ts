@@ -129,6 +129,10 @@ export function lojaLotada(estado: Pick<Estado, "orders">, loja: Loja): boolean 
 export const lojaAprovada = (loja: Pick<Loja, "status"> | undefined): boolean =>
   loja?.status === STATUS_LOJA.APROVADA;
 
+/** Suspensa ou reprovada pelo administrador: não movimenta pedidos. */
+export const lojaBloqueada = (loja: Pick<Loja, "status"> | undefined): boolean =>
+  loja?.status === STATUS_LOJA.SUSPENSA || loja?.status === STATUS_LOJA.REPROVADA;
+
 /** Lojas que o produtor pode escolher como ponto de retirada (só aprovadas). */
 export const lojasAprovadas = (estado: Pick<Estado, "stores">): Loja[] =>
   estado.stores.filter((loja) => lojaAprovada(loja));

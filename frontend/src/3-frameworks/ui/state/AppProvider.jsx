@@ -16,6 +16,8 @@ export function AppProvider({ casosDeUso, children }) {
   const [saving, setSaving] = useState(false);
   /** Gravação em andamento: um segundo clique reaproveita a mesma (PROD-03). */
   const emAndamento = useRef(null);
+  /** Conta as gravações: a atualização automática descarta leituras anteriores a uma delas. */
+  const versao = useRef(0);
 
   useEffect(() => {
     Promise.all([casosDeUso.carregarEstado(), casosDeUso.carregarSessao()])
@@ -36,10 +38,12 @@ export function AppProvider({ casosDeUso, children }) {
     let ativo = true;
     const atualizar = () => {
       if (emAndamento.current || document.visibilityState === "hidden") return;
+      // Uma gravação feita enquanto esta leitura viajava deixa a leitura velha: descarta.
+      const versaoNoInicio = versao.current;
       casosDeUso
         .carregarEstado()
         .then((estado) => {
-          if (ativo && !emAndamento.current) setData(estado);
+          if (ativo && !emAndamento.current && versao.current === versaoNoInicio) setData(estado);
         })
         .catch(() => {
           /* sem rede: tenta de novo no próximo ciclo */
@@ -58,8 +62,15 @@ export function AppProvider({ casosDeUso, children }) {
     if (!data) return null;
     /** Roda um caso de uso e atualiza a tela com o novo estado (uma gravação por vez). */
     const aplicar = (casoDeUso, ...args) => {
-      if (emAndamento.current) return emAndamento.current;
+      // Mesmo clique repetido reaproveita a gravação em andamento (PROD-03). Uma ação
+      // DIFERENTE é recusada: antes ela recebia o resultado da anterior, e "Cancelar" +
+      // "Pagar" seguidos mostravam "Pagamento aprovado" para um pedido cancelado.
+      if (emAndamento.current) {
+        if (emAndamento.current.casoDeUso === casoDeUso) return emAndamento.current.execucao;
+        return Promise.reject(new Error("Aguarde: ainda estamos salvando a ação anterior."));
+      }
       setSaving(true);
+      versao.current += 1;
       const execucao = (async () => {
         try {
           const resultado = await casoDeUso(...args);
@@ -70,7 +81,7 @@ export function AppProvider({ casosDeUso, children }) {
           setSaving(false);
         }
       })();
-      emAndamento.current = execucao;
+      emAndamento.current = { casoDeUso, execucao };
       return execucao;
     };
 
