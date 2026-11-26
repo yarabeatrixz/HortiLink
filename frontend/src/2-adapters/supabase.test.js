@@ -63,7 +63,7 @@ describe("supabaseAutenticacao", () => {
         password: "123456",
         role: "produtor",
       }),
-    ).rejects.toThrow("E-mail ou senha incorretos");
+    ).rejects.toThrow('Esta conta é de Loja parceira. Selecione o perfil "Loja parceira" para entrar.');
     expect(cliente.auth.signOut).toHaveBeenCalled();
   });
 

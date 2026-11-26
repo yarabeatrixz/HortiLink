@@ -11,7 +11,8 @@ const SEGREDO_RETIRADA_DEMO = "hortilink-demo";
 export function criarCasosDeUso(repositorio) {
   /** Carrega o estado, aplica a regra e grava. Lança `Error(mensagem)` se a regra falhar. */
   const executar = async (regra, ...args) => {
-    const estado = await repositorio.carregar();
+    // Pedido não pago no prazo é cancelado e devolve o estoque (igual à API).
+    const estado = dominio.expirarPedidosVencidos(await repositorio.carregar());
     const resultado = regra(estado, ...args);
     if (!resultado.ok) throw new Error(resultado.error);
     await repositorio.salvar(resultado.state);
@@ -24,8 +25,10 @@ export function criarCasosDeUso(repositorio) {
 
     async entrar(credenciais) {
       const estado = await repositorio.carregar();
-      const user = dominio.autenticar(estado.users, credenciais);
-      if (!user) throw new Error("E-mail ou senha incorretos");
+      const conta = dominio.contaComSenha(estado.users, credenciais);
+      if (!conta) throw new Error("E-mail ou senha incorretos");
+      if (conta.role !== credenciais.role) throw new Error(dominio.mensagemPerfilErrado(conta.role));
+      const user = conta;
       await repositorio.salvarSessao(user.id);
       return { user, state: estado };
     },
@@ -46,6 +49,7 @@ export function criarCasosDeUso(repositorio) {
 
     criarPedido: (dados) => executar(dominio.criarPedidoDireto, dados),
     pagarPedido: (id, metodo) => executar(dominio.pagarPedido, id, metodo),
+    cancelarPedido: (id) => executar(dominio.cancelarPedido, id),
     confirmarEntregaNaLoja: (id) => executar(dominio.confirmarEntregaNaLoja, id),
 
     criarProposta: (dados) => executar(dominio.criarProposta, dados),

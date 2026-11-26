@@ -3,7 +3,7 @@
 
 import { Check, CircleAlert, Clock3, Copy, CreditCard, QrCode } from "lucide-react";
 import { useEffect, useState } from "react";
-import { METODO_PAGAMENTO, brl } from "@hortilink/dominio";
+import { METODO_PAGAMENTO, PRAZO_PAGAMENTO_MINUTOS, STATUS_PEDIDO, brl } from "@hortilink/dominio";
 import { BackButton } from "../../components/base/BackButton";
 import { Button } from "../../components/base/Button";
 import { ErrorMessage } from "../../components/base/ErrorMessage";
@@ -24,7 +24,7 @@ const mmss = (segundos) =>
   `${String(Math.floor(segundos / 60)).padStart(2, "0")}:${String(segundos % 60).padStart(2, "0")}`;
 
 export function Checkout({ id, back, success, declined, initialMethod = METODO_PAGAMENTO.PIX }) {
-  const { orders, products, users, stores, payOrder } = useApp();
+  const { orders, products, users, stores, payOrder, cancelOrder } = useApp();
   const [method, setMethod] = useState(initialMethod);
   const [seconds, setSeconds] = useState(PIX_EXPIRA_EM_SEGUNDOS);
   const [copied, setCopied] = useState(false);
@@ -44,12 +44,35 @@ export function Checkout({ id, back, success, declined, initialMethod = METODO_P
   }, [method, seconds]);
 
   const order = orders.find((item) => item.id === id);
-  if (!order) return null;
+  if (!order || order.status !== STATUS_PEDIDO.AGUARDANDO_PAGAMENTO) {
+    // Pedido sumiu, foi cancelado ou expirou: explica em vez de deixar a tela em branco.
+    return (
+      <div className="checkout-page">
+        <BackButton onClick={back} />
+        <ErrorMessage>
+          {order?.status === STATUS_PEDIDO.CANCELADO
+            ? "Este pedido foi cancelado (ou o prazo para pagar acabou) e o estoque voltou para a vitrine. Faça a compra de novo."
+            : order
+              ? "Este pedido já foi pago. Acompanhe em Minhas compras."
+              : "Pedido não encontrado. Confira em Minhas compras."}
+        </ErrorMessage>
+      </div>
+    );
+  }
   const product = products.find((item) => item.id === order.productId);
   const producer = users.find((item) => item.id === order.producerId);
   const store = stores.find((item) => item.id === order.storeId);
   const total = totalPedido(order);
   const setCardField = (key) => (event) => setCard({ ...card, [key]: event.target.value });
+
+  const cancel = async () => {
+    try {
+      await cancelOrder(order.id);
+      back();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
   const approve = async (paymentMethod) => {
     try {
@@ -223,6 +246,13 @@ export function Checkout({ id, back, success, declined, initialMethod = METODO_P
             <span>Total</span>
             <strong>{brl(total)}</strong>
           </div>
+          <p className="checkout-deadline">
+            Pague em até {PRAZO_PAGAMENTO_MINUTOS} minutos. Depois disso o pedido é cancelado e o
+            estoque volta para a vitrine.
+          </p>
+          <Button variant="secondary" className="full" locks onClick={cancel}>
+            Cancelar pedido
+          </Button>
         </aside>
       </div>
     </div>

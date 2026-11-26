@@ -26,7 +26,10 @@ describe("login", () => {
     render(<App />);
     await user.type(await screen.findByLabelText("E-mail"), "comprador@hortilink.com");
     await user.type(screen.getByLabelText("Senha"), "123456");
-    // perfil padrão é Produtor → não deve entrar como comprador
+    // perfil padrão é Produtor → não entra, e a mensagem diz qual é o perfil certo (Sprint 3)
+    await user.click(screen.getByRole("button", { name: "Entrar na plataforma" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Esta conta é de Comprador");
+    await user.type(screen.getByLabelText("Senha"), "x");
     await user.click(screen.getByRole("button", { name: "Entrar na plataforma" }));
     expect(screen.getByRole("alert")).toHaveTextContent("E-mail ou senha incorretos");
   });

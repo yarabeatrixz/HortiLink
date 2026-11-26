@@ -10,7 +10,7 @@ import { useApp } from "../state/AppProvider";
 const ICONE_PERFIL = { produtor: Sprout, comprador: ShoppingBasket, loja: Store, admin: ShieldCheck };
 const FORM_VAZIO = { name: "", city: "", email: "", password: "" };
 
-export function Auth() {
+export function Auth({ mostrarContasDemo = false }) {
   const { login, register } = useApp();
   const [mode, setMode] = useState("login");
   const [role, setRole] = useState("produtor");
@@ -125,13 +125,16 @@ export function Auth() {
           >
             {isLogin ? "Não tem uma conta? Cadastre-se" : "Já possui conta? Entrar"}
           </button>
-          <div className="demo-access">
-            <b>Acessos de demonstração · senha 123456</b>
-            <span>produtor@hortilink.com</span>
-            <span>comprador@hortilink.com</span>
-            <span>loja@hortilink.com</span>
-            <span>admin@hortilink.com</span>
-          </div>
+          {/* Sprint 3: as contas de teste só aparecem no modo demonstração, nunca no site real. */}
+          {mostrarContasDemo && (
+            <div className="demo-access">
+              <b>Acessos de demonstração · senha 123456</b>
+              <span>produtor@hortilink.com</span>
+              <span>comprador@hortilink.com</span>
+              <span>loja@hortilink.com</span>
+              <span>admin@hortilink.com</span>
+            </div>
+          )}
         </form>
       </section>
     </main>

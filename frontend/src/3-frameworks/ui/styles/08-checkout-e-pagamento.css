@@ -353,3 +353,10 @@
 .store-order-status small {
   color: #27618a;
 }
+
+/* Sprint 3: prazo de pagamento e cancelamento do pedido */
+.checkout-deadline {
+  margin: 12px 0;
+  font-size: 11px;
+  color: var(--muted);
+}
