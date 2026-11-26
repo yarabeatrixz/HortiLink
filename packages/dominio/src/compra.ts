@@ -32,9 +32,14 @@ export function validarCompra(
   const oferta = deOferta ? estado.offers.find((item) => item.id === dados.sourceId) : undefined;
   if (deOferta && (!oferta || !ofertaAtiva(oferta, agora)))
     return falha("Esta oferta não está mais disponível");
+  // A oferta precisa ser DESTE produto: senão o comprador pagaria o preço
+  // promocional de outro item (achado 1 da banca da Sprint 3).
+  if (oferta && oferta.productId !== produto.id) return falha("Esta oferta não é deste produto");
 
   const quantidade = num(dados.quantity);
-  const disponivel = oferta ? oferta.quantity : produto.quantity;
+  // A oferta é uma parte do estoque do produto: o disponível é o menor dos dois,
+  // para o estoque nunca ficar negativo depois de uma perda ou de outra venda.
+  const disponivel = oferta ? Math.min(oferta.quantity, produto.quantity) : produto.quantity;
   if (quantidade <= 0) return falha("Informe uma quantidade válida");
   if (quantidade > disponivel) return falha("Quantidade acima da disponível");
 

@@ -4,11 +4,15 @@ import {
   EVENTO_PEDIDO,
   type EventoPedido,
   type MetodoPagamento,
+  ORIGEM,
+  PRAZO_PAGAMENTO_MINUTOS,
   STATUS_PEDIDO,
   type StatusPedido,
 } from "./constantes";
 import { type DadosCompra, numeroPedido, reservarEstoque, validarCompra } from "./compra";
+import { hmacSha256Hex } from "./hmac";
 import { num } from "./formatacao";
+import { lojaAprovada, lojaLotada } from "./lojas";
 import type { Estado, Pedido, Resultado } from "./tipos";
 import { falha, novoId, substituir } from "./util";
 
@@ -75,6 +79,14 @@ export function pagarPedido(
   const pedido = estado.orders.find((item) => item.id === pedidoId);
   if (pedido?.status !== STATUS_PEDIDO.AGUARDANDO_PAGAMENTO)
     return falha("Este pedido não está aguardando pagamento");
+  if (pedidoVencido(pedido, agora))
+    return falha("O prazo para pagar este pedido acabou. Faça a compra de novo.");
+  // A loja pode ter sido suspensa ou lotado entre a compra e o pagamento.
+  const loja = estado.stores.find((item) => item.id === pedido.storeId);
+  if (!loja || !lojaAprovada(loja))
+    return falha("Este ponto de retirada não está disponível no momento. Cancele e compre de novo.");
+  if (lojaLotada(estado, loja))
+    return falha("Este ponto de retirada lotou. Cancele e compre de novo escolhendo outro ponto.");
   const momento = agora.toISOString();
   return {
     ok: true,
@@ -85,6 +97,52 @@ export function pagarPedido(
       extras: { paymentMethod: metodo, paidAt: momento },
     }),
   };
+}
+
+// ---------------------------------------------------------------- Cancelamento e prazo (Sprint 3)
+
+/** Pedido aguardando pagamento há mais de PRAZO_PAGAMENTO_MINUTOS. */
+export const pedidoVencido = (pedido: Pick<Pedido, "status" | "createdAt">, agora: Date): boolean =>
+  pedido.status === STATUS_PEDIDO.AGUARDANDO_PAGAMENTO &&
+  agora.getTime() - new Date(pedido.createdAt).getTime() > PRAZO_PAGAMENTO_MINUTOS * 60_000;
+
+/** Cancela o pedido e devolve a quantidade ao produto (e à oferta, se ainda existir). */
+function devolverEstoque(estado: Estado, pedido: Pedido, evento: EventoPedido, momento: string): Estado {
+  const devolver = <T extends { id: string; quantity: number }>(item: T): T => ({
+    ...item,
+    quantity: item.quantity + pedido.quantity,
+  });
+  const cancelado = avancarPedido(estado, pedido.id, {
+    status: STATUS_PEDIDO.CANCELADO,
+    evento,
+    momento,
+    extras: {},
+  });
+  return {
+    ...cancelado,
+    products: substituir(cancelado.products, pedido.productId, devolver),
+    offers:
+      pedido.type === ORIGEM.OFERTA ? substituir(cancelado.offers, pedido.sourceId, devolver) : cancelado.offers,
+  };
+}
+
+/** O comprador desiste antes de pagar: o pedido é cancelado e o estoque volta. */
+export function cancelarPedido(estado: Estado, pedidoId: string, agora: Date = new Date()): Resultado {
+  const pedido = estado.orders.find((item) => item.id === pedidoId);
+  if (pedido?.status !== STATUS_PEDIDO.AGUARDANDO_PAGAMENTO)
+    return falha("Só pedidos aguardando pagamento podem ser cancelados");
+  return { ok: true, state: devolverEstoque(estado, pedido, EVENTO_PEDIDO.CANCELADO, agora.toISOString()) };
+}
+
+/**
+ * Cancela todos os pedidos não pagos dentro do prazo e devolve o estoque.
+ * A API roda isto antes de cada gravação, para o estoque não ficar preso.
+ */
+export function expirarPedidosVencidos(estado: Estado, agora: Date = new Date()): Estado {
+  const momento = agora.toISOString();
+  return estado.orders
+    .filter((pedido) => pedidoVencido(pedido, agora))
+    .reduce((atual, pedido) => devolverEstoque(atual, pedido, EVENTO_PEDIDO.EXPIRADO, momento), estado);
 }
 
 export function confirmarEntregaNaLoja(estado: Estado, pedidoId: string, agora: Date = new Date()): Resultado {
@@ -109,15 +167,13 @@ export function confirmarEntregaNaLoja(estado: Estado, pedidoId: string, agora: 
  * Código de 6 dígitos que o comprador mostra na loja. É derivado do id do pedido e
  * de um SEGREDO que só o servidor conhece: não fica no banco, então a loja não
  * consegue ler o código; só o comprador (pela API) o recebe.
- * (Hash FNV-1a: suficiente para o MVP; trocar por HMAC se houver risco maior.)
+ * HMAC-SHA256 (Sprint 3): sem o segredo, conhecer códigos de outros pedidos não
+ * ajuda a calcular o próximo. O limite de tentativas fica na API.
  */
 export function codigoDeRetirada(pedidoId: string, segredo: string): string {
-  let hash = 0x811c9dc5;
-  for (const caractere of `${segredo}:${pedidoId}`) {
-    hash ^= caractere.charCodeAt(0);
-    hash = Math.imul(hash, 0x01000193) >>> 0;
-  }
-  return String(hash % 1_000_000).padStart(6, "0");
+  const resumo = hmacSha256Hex(segredo, `retirada:${pedidoId}`);
+  // 48 bits do resumo → 6 dígitos (o viés do módulo é desprezível).
+  return String(Number.parseInt(resumo.slice(0, 12), 16) % 1_000_000).padStart(6, "0");
 }
 
 /** Mostrar o código ao comprador só depois que o produto chegou à loja. */

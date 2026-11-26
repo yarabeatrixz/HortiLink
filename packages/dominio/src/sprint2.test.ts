@@ -95,19 +95,21 @@ describe("recompensa das lojas (US16)", () => {
   });
 
   it("fecha o mês uma única vez e congela o valor", () => {
-    const fechado = sucesso(fecharMesRecompensa(retirado(), "loja-1", "2026-11", AGORA));
+    const DEPOIS = new Date("2026-12-02T12:00:00.000Z");
+    expect(falhaDe(fecharMesRecompensa(retirado(), "loja-1", "2026-11", AGORA))).toMatch(/depois que ele terminar/);
+    const fechado = sucesso(fecharMesRecompensa(retirado(), "loja-1", "2026-11", DEPOIS));
     expect(fechado.payout).toMatchObject({ storeId: "loja-1", month: "2026-11", ordersCount: 1 });
-    expect(falhaDe(fecharMesRecompensa(fechado.state, "loja-1", "2026-11", AGORA))).toMatch(/já foi fechado/);
+    expect(falhaDe(fecharMesRecompensa(fechado.state, "loja-1", "2026-11", DEPOIS))).toMatch(/já foi fechado/);
     const mudouRegra = sucesso(salvarConfigRecompensa(fechado.state, { fixedAmount: 50, percent: 50 })).state;
     expect(extratoDaLoja(mudouRegra, "loja-1", "2026-11").amount).toBe(fechado.payout.amount);
-    expect(falhaDe(fecharMesRecompensa(criarExemplo(), "loja-1", "2026-11", AGORA))).toMatch(/Nenhum pedido/);
+    expect(falhaDe(fecharMesRecompensa(criarExemplo(), "loja-1", "2026-11", DEPOIS))).toMatch(/Nenhum pedido/);
     expect(falhaDe(fecharMesRecompensa(criarExemplo(), "loja-1", "2027-01", AGORA))).toMatch(/não começou/);
   });
 });
 
 describe("catálogo e perfil", () => {
   it("exclui vários produtos e as ofertas deles de uma vez (PROD-02)", () => {
-    const r = sucesso(excluirProdutos(criarExemplo(), ["produto-1", "produto-2"]));
+    const r = sucesso(excluirProdutos({ ...criarExemplo(), orders: [] }, ["produto-1", "produto-2"]));
     expect(r.state.products.map((p) => p.id)).not.toContain("produto-1");
     expect(r.state.offers.some((o) => ["produto-1", "produto-2"].includes(o.productId))).toBe(false);
     expect(falhaDe(excluirProdutos(criarExemplo(), []))).toMatch(/Selecione/);

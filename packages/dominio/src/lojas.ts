@@ -21,6 +21,22 @@ const CAMPOS_OBRIGATORIOS = ["name", "address", "city", "hours"] as const;
 const caixas = (valor: Numerico | undefined): number =>
   valor === "" || valor === undefined || valor === null ? 0 : num(valor);
 
+/** Campos que o administrador avaliou: mudar um deles exige nova avaliação. */
+const CAMPOS_AVALIADOS = ["name", "address", "city"] as const;
+
+/**
+ * Loja nova e loja reprovada que corrige os dados vão para análise ("Pendente").
+ * Loja aprovada que muda nome, endereço ou cidade também volta para análise
+ * (Sprint 3: senão o comprador iria retirar num lugar que ninguém avaliou).
+ * Suspensa continua suspensa: só o administrador reativa.
+ */
+function novaSituacao(existente: Loja | undefined, dados: DadosLoja): StatusLoja {
+  if (!existente || existente.status === STATUS_LOJA.REPROVADA) return STATUS_LOJA.PENDENTE;
+  const mudouAvaliado = CAMPOS_AVALIADOS.some((campo) => texto(dados[campo]) !== existente[campo]);
+  if (existente.status === STATUS_LOJA.APROVADA && mudouAvaliado) return STATUS_LOJA.PENDENTE;
+  return existente.status;
+}
+
 /**
  * Cria ou atualiza o ponto de coleta do usuário. Nunca cria um segundo ponto para
  * o mesmo usuário (LOJA-02). Loja nova começa "Pendente" até o administrador avaliar.
@@ -46,9 +62,7 @@ export function salvarLoja(estado: Estado, userId: string, dados: DadosLoja): Re
     photo: foto,
     dryBoxes,
     coldBoxes,
-    // Reprovada que corrige os dados volta para análise; as outras mantêm a situação.
-    status:
-      existente?.status === STATUS_LOJA.REPROVADA ? STATUS_LOJA.PENDENTE : (existente?.status ?? STATUS_LOJA.PENDENTE),
+    status: novaSituacao(existente, dados),
   };
   return {
     ok: true,
