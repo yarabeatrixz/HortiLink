@@ -4,6 +4,7 @@ import { PERFIS, PERFIS_CADASTRO, SENHA_MINIMA } from "@hortilink/dominio";
 import { Button } from "../components/base/Button";
 import { ErrorMessage } from "../components/base/ErrorMessage";
 import { Field } from "../components/base/Field";
+import { PasswordField } from "../components/base/PasswordField";
 import { Logo } from "../components/Logo";
 import { useApp } from "../state/AppProvider";
 
@@ -102,9 +103,8 @@ export function Auth({ mostrarContasDemo = false }) {
             onChange={update("email")}
             placeholder="nome@exemplo.com"
           />
-          <Field
+          <PasswordField
             label="Senha"
-            type="password"
             autoComplete={isLogin ? "current-password" : "new-password"}
             value={form.password}
             onChange={update("password")}

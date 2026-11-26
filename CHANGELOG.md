@@ -2,6 +2,13 @@
 
 Cada sprint é uma versão publicada com link próprio (pedido do professor). O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [3.1.0] — Sprint 3 · 25/11/2026 · mostrar senha
+
+Site: https://hortilink-sprint3.vercel.app (mesmo link da 3.0.0)
+
+### Adicionado
+- Botão de olho para mostrar ou ocultar a senha no login, no cadastro e na troca de senha do perfil.
+
 ## [3.0.0] — Sprint 3 · 25/11/2026 · correções da banca de revisão
 
 Site: https://hortilink-sprint3.vercel.app · Detalhes e passos de publicação: [`docs/SPRINT-3.md`](docs/SPRINT-3.md)
