@@ -1,6 +1,8 @@
 // Esquemas JSON do corpo das requisições (validados pelo Fastify antes da rota).
 // Validam só FORMATO; regras de negócio ficam no domínio.
 
+import { CATEGORIAS, UNIDADES } from "@hortilink/dominio";
+
 const texto = { type: "string", minLength: 1, maxLength: 120 } as const;
 const textoOpcional = { type: "string", maxLength: 120 } as const;
 const textoLongo = { type: "string", maxLength: 500 } as const;
@@ -10,9 +12,18 @@ const foto = {
   maxLength: 1_400_000,
   pattern: "^$|^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$|^https://[^\\s<>\"]+$",
 } as const;
-/** Números podem chegar como texto de formulário ("2,50"); o domínio converte. */
-const numero = { type: ["number", "string"] } as const;
-const listaDeIds = { type: "array", items: texto } as const;
+/**
+ * Números podem chegar como texto de formulário ("2,50"); o domínio converte.
+ * Teto de 1 bilhão e texto curto: barram valores absurdos (1e300) que estouravam
+ * as colunas do banco e viravam erro 500 (achado 15 da banca).
+ */
+const numero = {
+  anyOf: [
+    { type: "number", minimum: -1_000_000_000, maximum: 1_000_000_000 },
+    { type: "string", maxLength: 20 },
+  ],
+} as const;
+const listaDeIds = { type: "array", items: texto, maxItems: 50, uniqueItems: true } as const;
 
 const objeto = (propriedades: Record<string, object>, obrigatorios: string[]) =>
   ({
@@ -26,8 +37,8 @@ export const esquemaProduto = objeto(
   {
     id: textoOpcional,
     name: textoOpcional,
-    category: texto,
-    unit: texto,
+    category: { type: "string", enum: [...CATEGORIAS] },
+    unit: { type: "string", enum: [...UNIDADES] },
     price: numero,
     quantity: numero,
     minQuantity: numero,

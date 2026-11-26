@@ -30,7 +30,7 @@ export interface DependenciasServidor {
 }
 
 export function criarServidor(
-  ambiente: Pick<Ambiente, "origemFrontend">,
+  ambiente: Pick<Ambiente, "origemFrontend"> & Partial<Pick<Ambiente, "proxiesConfiaveis">>,
   dependencias?: DependenciasServidor,
   opcoes = { log: false },
 ): FastifyInstance {
@@ -38,6 +38,10 @@ export function criarServidor(
   const app = Fastify({
     logger: opcoes.log,
     bodyLimit: LIMITE_CORPO_BYTES,
+    // Atrás do proxy do Render o IP do cliente vem no X-Forwarded-For; sem isso todos
+    // os usuários dividiriam o mesmo limite de requisições (achado 22 da banca).
+    // Confia só nos N saltos mais próximos (os proxies do provedor), não no que o cliente escreve.
+    trustProxy: (_endereco: string, salto: number) => salto < (ambiente.proxiesConfiaveis || 0),
     ajv: { customOptions: { removeAdditional: false } },
   });
 
@@ -69,6 +73,10 @@ export function criarServidor(
     }
     if (erro.validation) {
       return resposta.code(400).send({ error: "Dados inválidos: confira os campos enviados" });
+    }
+    // JSON malformado, tipo de conteúdo errado etc.: erro de quem enviou, não do servidor.
+    if (erro.statusCode && erro.statusCode >= 400 && erro.statusCode < 500) {
+      return resposta.code(erro.statusCode).send({ error: "Requisição inválida. Recarregue a página e tente de novo." });
     }
     app.log.error(erro);
     return resposta.code(500).send({ error: "Erro inesperado no servidor. Tente de novo." });

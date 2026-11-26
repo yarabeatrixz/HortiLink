@@ -109,6 +109,11 @@ export function registrarRotasApi(
       return res.code(201).send({ ok: true, order });
     });
 
+    rotas.post<ComId>("/orders/:id/cancel", async (req) => {
+      await casos.cancelarPedido(req.userId, req.params.id);
+      return { ok: true };
+    });
+
     rotas.post<ComId & { Body: { method: MetodoPagamento } }>(
       "/orders/:id/pay",
       { schema: { body: esquemas.esquemaPagamento } },
